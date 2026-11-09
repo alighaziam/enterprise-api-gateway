@@ -28,8 +28,9 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .pathMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
                         .pathMatchers("/fallback/**").denyAll()
-                        .pathMatchers("/api/orders/**").hasAuthority("SCOPE_orders.read")
-                        .pathMatchers("/api/customers/**").hasAuthority("SCOPE_customers.read")
+                        .pathMatchers(HttpMethod.GET, "/api/orders/**").hasAuthority("SCOPE_orders.read")
+                        .pathMatchers(HttpMethod.GET, "/api/customers/**").hasAuthority("SCOPE_customers.read")
+                        .pathMatchers("/api/orders/**", "/api/customers/**").denyAll()
                         .anyExchange().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}))
                 .build();
