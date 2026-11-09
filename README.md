@@ -110,7 +110,7 @@ The route filters are configured per service. Rate limits are keyed by the authe
 - `GET /actuator/info`
 - `GET /actuator/prometheus`
 
-Only the listed health/info/Prometheus endpoints are publicly permitted by the security configuration. Restrict actuator exposure further in production.
+Health and info are public. Prometheus, metrics, gateway diagnostics and other actuator endpoints require authentication. Restrict actuator exposure to an internal network in production.
 
 ## Example request
 
