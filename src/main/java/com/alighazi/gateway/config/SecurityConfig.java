@@ -26,7 +26,7 @@ public class SecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .pathMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
+                        .pathMatchers("/actuator/health", "/actuator/info").permitAll()
                         .pathMatchers("/fallback/**").denyAll()
                         .pathMatchers(HttpMethod.GET, "/api/orders/**").hasAuthority("SCOPE_orders.read")
                         .pathMatchers(HttpMethod.GET, "/api/customers/**").hasAuthority("SCOPE_customers.read")
