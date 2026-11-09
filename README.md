@@ -92,6 +92,7 @@ The route filters are configured per service. Rate limits are keyed by the authe
 |---|---|---|
 | `WSO2_ISSUER_URI` | `https://localhost:9443/oauth2/token` in app config | Exact JWT `iss` and OIDC issuer |
 | `WSO2_REQUIRED_AUDIENCE` | empty | If set, required value in JWT `aud` |
+| `WSO2_JWKS_URI` | empty | Optional explicit JWK Set URL when discovery is non-standard |
 | `REDIS_HOST` | `localhost` | Redis hostname |
 | `REDIS_PORT` | `6379` | Redis port |
 | `ORDERS_SERVICE_URI` | `http://localhost:8081` | Orders backend |
