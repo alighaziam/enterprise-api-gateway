@@ -12,7 +12,13 @@ For a typical local installation the issuer is often:
 https://localhost:9443/oauth2/token
 ```
 
-Do not assume this value: confirm it in your IS 7.3 deployment. The issuer URL configured in the gateway must exactly match the token's `iss` claim.
+The standard local JWKS endpoint is commonly:
+
+```text
+https://localhost:9443/oauth2/jwks
+```
+
+Do not assume either value: confirm the `issuer` and `jwks_uri` fields in your IS 7.3 metadata. WSO2 documents JWT access-token validation through the public JWKS endpoint and requires the issuer and audience claims to be checked by resource servers. The issuer URL configured in the gateway must exactly match the token's `iss` claim.
 
 ## 2. Configure the WSO2 application
 
@@ -23,7 +29,7 @@ Do not assume this value: confirm it in your IS 7.3 deployment. The issuer URL c
 5. If audience validation is enabled, configure the access-token audience to include the value selected for `WSO2_REQUIRED_AUDIENCE`.
 6. Obtain an access token and verify that it contains `iss`, `exp`, `aud` (when required), and the expected scopes.
 
-The gateway maps OAuth scopes to Spring Security authorities using the `SCOPE_` prefix. Therefore `orders.read` becomes `SCOPE_orders.read`.
+The gateway maps OAuth scopes to Spring Security authorities using the `SCOPE_` prefix. Therefore `orders.read` becomes `SCOPE_orders.read`. WSO2's default JWT `scope` claim is a space-separated string; keep that standard format unless you have verified the converter behavior for a customized array format.
 
 ## 3. Configure the gateway
 
@@ -71,3 +77,10 @@ curl -i http://localhost:8080/api/orders/123 \
 ```
 
 A valid token with `orders.read` should reach the Orders backend. Missing/invalid tokens return 401; a valid token without the required scope returns 403; rate-limit exhaustion returns 429; an open circuit returns 503.
+
+
+## Official WSO2 references
+
+- [Access tokens and JWT validation](https://is.docs.wso2.com/en/latest/references/tokens/access-tokens/)
+- [Validate JWT with JWKS](https://is.docs.wso2.com/en/next/guides/authentication/oidc/validate-jwt-with-jwks/)
+- [OIDC application settings](https://is.docs.wso2.com/en/latest/references/app-settings/oidc-settings-for-app/)
