@@ -22,13 +22,14 @@ public class CorrelationIdGlobalFilter implements GlobalFilter, Ordered {
         if (correlationId == null || correlationId.isBlank()) {
             correlationId = UUID.randomUUID().toString();
         }
+        final String resolvedCorrelationId = correlationId;
 
         ServerHttpRequest request = exchange.getRequest().mutate()
-                .headers(headers -> headers.set(HEADER_NAME, correlationId))
+                .headers(headers -> headers.set(HEADER_NAME, resolvedCorrelationId))
                 .build();
 
         exchange.getResponse().beforeCommit(() -> {
-            exchange.getResponse().getHeaders().set(HEADER_NAME, correlationId);
+            exchange.getResponse().getHeaders().set(HEADER_NAME, resolvedCorrelationId);
             return Mono.empty();
         });
 
