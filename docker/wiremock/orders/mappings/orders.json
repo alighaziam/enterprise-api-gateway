@@ -1,0 +1,23 @@
+{
+  "mappings": [
+    {
+      "name": "orders endpoint",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/orders(?:/.*)?"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "service": "orders",
+          "path": "{{request.path}}",
+          "status": "ok"
+        },
+        "transformers": ["response-template"]
+      }
+    }
+  ]
+}
