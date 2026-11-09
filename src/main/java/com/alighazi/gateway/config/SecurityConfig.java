@@ -27,6 +27,9 @@ public class SecurityConfig {
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .pathMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
+                        .pathMatchers("/fallback/**").denyAll()
+                        .pathMatchers("/api/orders/**").hasAuthority("SCOPE_orders.read")
+                        .pathMatchers("/api/customers/**").hasAuthority("SCOPE_customers.read")
                         .anyExchange().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}))
                 .build();
