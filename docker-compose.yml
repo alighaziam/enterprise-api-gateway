@@ -46,6 +46,8 @@ services:
       REDIS_HOST: redis
       WSO2_ISSUER_URI: ${WSO2_ISSUER_URI:-https://host.docker.internal:9443/oauth2/token}
       WSO2_REQUIRED_AUDIENCE: ${WSO2_REQUIRED_AUDIENCE:-}
+      WSO2_JWKS_URI: ${WSO2_JWKS_URI:-}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-}
       ORDERS_SERVICE_URI: http://orders-mock:8080
       CUSTOMERS_SERVICE_URI: http://customers-mock:8080
       ORDERS_RATE_LIMIT_REPLENISH: ${ORDERS_RATE_LIMIT_REPLENISH:-20}
