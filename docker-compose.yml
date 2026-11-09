@@ -1,0 +1,30 @@
+services:
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  gateway:
+    build: .
+    image: enterprise-api-gateway:local
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      REDIS_HOST: redis
+      WSO2_ISSUER_URI: ${WSO2_ISSUER_URI:-https://host.docker.internal:9443/oauth2/token}
+      ORDERS_SERVICE_URI: ${ORDERS_SERVICE_URI:-http://host.docker.internal:8081}
+      CUSTOMERS_SERVICE_URI: ${CUSTOMERS_SERVICE_URI:-http://host.docker.internal:8082}
+
+volumes:
+  redis-data:
