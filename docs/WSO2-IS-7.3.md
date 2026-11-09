@@ -32,7 +32,11 @@ Set environment variables before starting the application:
 ```bash
 export WSO2_ISSUER_URI="https://your-wso2-host:9443/oauth2/token"
 export WSO2_REQUIRED_AUDIENCE="your-api-audience"
+# Optional: set this to jwks_uri from the discovery document if discovery is non-standard.
+export WSO2_JWKS_URI="https://your-wso2-host:9443/oauth2/jwks"
 ```
+
+When `WSO2_JWKS_URI` is supplied, the gateway fetches keys directly from that endpoint but still validates the JWT issuer and timestamp claims.
 
 Leave the audience empty only when the deployment intentionally does not enforce audience validation. For production, configure an explicit audience.
 
