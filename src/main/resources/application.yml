@@ -1,5 +1,6 @@
 server:
   port: 8080
+  shutdown: graceful
 
 spring:
   application:
@@ -8,11 +9,13 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${WSO2_ISSUER_URI:http://localhost:9443/oauth2/token}
+          issuer-uri: ${WSO2_ISSUER_URI:https://localhost:9443/oauth2/token}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      connect-timeout: 2s
+      timeout: 2s
   cloud:
     gateway:
       server:
@@ -24,15 +27,37 @@ spring:
                 - Path=/api/orders/**
               filters:
                 - StripPrefix=1
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: ${ORDERS_RATE_LIMIT_REPLENISH:20}
+                    redis-rate-limiter.burstCapacity: ${ORDERS_RATE_LIMIT_BURST:40}
+                    key-resolver: "#{@principalKeyResolver}"
+                - name: CircuitBreaker
+                  args:
+                    name: ordersCircuitBreaker
+                    fallbackUri: forward:/fallback/orders
             - id: customers-service
               uri: ${CUSTOMERS_SERVICE_URI:http://localhost:8082}
               predicates:
                 - Path=/api/customers/**
               filters:
                 - StripPrefix=1
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: ${CUSTOMERS_RATE_LIMIT_REPLENISH:30}
+                    redis-rate-limiter.burstCapacity: ${CUSTOMERS_RATE_LIMIT_BURST:60}
+                    key-resolver: "#{@principalKeyResolver}"
+                - name: CircuitBreaker
+                  args:
+                    name: customersCircuitBreaker
+                    fallbackUri: forward:/fallback/customers
           httpclient:
             connect-timeout: 3000
             response-timeout: 10s
+
+security:
+  jwt:
+    audience: ${WSO2_REQUIRED_AUDIENCE:}
 
 management:
   endpoints:
@@ -48,12 +73,24 @@ management:
 
 resilience4j:
   circuitbreaker:
-    instances:
-      backend:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
         sliding-window-size: 20
+        minimum-number-of-calls: 10
         failure-rate-threshold: 50
+        slow-call-rate-threshold: 70
+        slow-call-duration-threshold: 3s
         wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+    instances:
+      ordersCircuitBreaker:
+        base-config: default
+      customersCircuitBreaker:
+        base-config: default
 
 logging:
-  pattern:
-    level: "%5p [correlationId:%X{X-Correlation-ID:-}]"
+  level:
+    org.springframework.cloud.gateway: INFO
+    org.springframework.security: INFO
