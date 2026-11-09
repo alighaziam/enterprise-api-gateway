@@ -57,6 +57,7 @@ spring:
 
 security:
   jwt:
+    jwk-set-uri: ${WSO2_JWKS_URI:}
     audience: ${WSO2_REQUIRED_AUDIENCE:}
 
 management:
