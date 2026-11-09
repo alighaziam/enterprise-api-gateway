@@ -1,0 +1,23 @@
+{
+  "mappings": [
+    {
+      "name": "customers endpoint",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/customers(?:/.*)?"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "service": "customers",
+          "path": "{{request.path}}",
+          "status": "ok"
+        },
+        "transformers": ["response-template"]
+      }
+    }
+  ]
+}
