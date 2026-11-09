@@ -16,9 +16,9 @@ concurrency:
 
 jobs:
   build:
-    name: Build and test (Java 21)
+    name: Build, test and smoke test (Java 21)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,6 +38,57 @@ jobs:
 
       - name: Build container image
         run: docker build --tag enterprise-api-gateway:${{ github.sha }} .
+
+      - name: Start local integration stack
+        run: |
+          docker tag enterprise-api-gateway:${{ github.sha }} enterprise-api-gateway:local
+          docker compose up -d --no-build
+
+      - name: Smoke test gateway, security and WireMock backends
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          health_file="$(mktemp)"
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --fail http://localhost:8080/actuator/health > "$health_file"; then
+              break
+            fi
+            sleep 2
+          done
+          python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["status"] == "UP"' "$health_file"
+
+          status="$(curl --silent --output /tmp/unauthorized-body.json --dump-header /tmp/unauthorized-headers.txt --write-out '%{http_code}' http://localhost:8080/api/orders/ci-smoke)"
+          test "$status" = "401"
+          grep -qi '^X-Correlation-ID:' /tmp/unauthorized-headers.txt
+
+          orders_ok=false
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --fail http://localhost:8081/orders/ci-smoke | python3 -c 'import json,sys; assert json.load(sys.stdin)["service"] == "orders"'; then
+              orders_ok=true
+              break
+            fi
+            sleep 2
+          done
+          test "$orders_ok" = true
+
+          customers_ok=false
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --fail http://localhost:8082/customers/ci-smoke | python3 -c 'import json,sys; assert json.load(sys.stdin)["service"] == "customers"'; then
+              customers_ok=true
+              break
+            fi
+            sleep 2
+          done
+          test "$customers_ok" = true
+
+      - name: Show integration logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Stop local integration stack
+        if: always()
+        run: docker compose down -v
 
       - name: Upload test reports
         if: always()
