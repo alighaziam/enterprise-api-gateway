@@ -1,24 +1,17 @@
 # WSO2 Identity Server 7.3 integration
 
-The gateway acts as an OAuth 2.0 JWT Resource Server. WSO2 IS issues access tokens; the gateway validates their signature, issuer, expiry and (optionally) audience using the provider's OpenID Connect metadata and JWKS endpoint.
+The gateway acts as an OAuth 2.0 JWT Resource Server. WSO2 IS issues access tokens; the gateway validates their signature, issuer, expiry and (optionally) audience using the WSO2 public JWKS endpoint.
 
-## 1. Confirm the issuer
+## 1. Confirm the issuer and JWKS endpoint
 
-Open the WSO2 OIDC discovery document for your deployment and inspect its `issuer` and `jwks_uri` values. Depending on the configured discovery path, the metadata endpoint is commonly exposed under the issuer's `/.well-known/openid-configuration` path. Use the exact issuer value from the metadata and from the JWT `iss` claim.
-
-For a typical local installation the issuer is often:
+For a typical local installation the issuer and JWKS endpoint are often:
 
 ```text
-https://localhost:9443/oauth2/token
+Issuer: https://localhost:9443/oauth2/token
+JWKS:   https://localhost:9443/oauth2/jwks
 ```
 
-The standard local JWKS endpoint is commonly:
-
-```text
-https://localhost:9443/oauth2/jwks
-```
-
-Do not assume either value: confirm the `issuer` and `jwks_uri` fields in your IS 7.3 metadata. WSO2 documents JWT access-token validation through the public JWKS endpoint and requires the issuer and audience claims to be checked by resource servers. The issuer URL configured in the gateway must exactly match the token's `iss` claim.
+Do not assume these values: confirm the issuer from the JWT `iss` claim and your WSO2 IS 7.3 configuration. The gateway issuer validator requires an exact match. WSO2 documents `/oauth2/jwks` as the public signing-key endpoint used by resource servers.
 
 ## 2. Configure the WSO2 application
 
@@ -29,24 +22,19 @@ Do not assume either value: confirm the `issuer` and `jwks_uri` fields in your I
 5. If audience validation is enabled, configure the access-token audience to include the value selected for `WSO2_REQUIRED_AUDIENCE`.
 6. Obtain an access token and verify that it contains `iss`, `exp`, `aud` (when required), and the expected scopes.
 
-The gateway maps OAuth scopes to Spring Security authorities using the `SCOPE_` prefix. Therefore `orders.read` becomes `SCOPE_orders.read`. WSO2's default JWT `scope` claim is a space-separated string; keep that standard format unless you have verified the converter behavior for a customized array format.
+The gateway maps OAuth scopes to Spring Security authorities using the `SCOPE_` prefix. Therefore `orders.read` becomes `SCOPE_orders.read`. WSO2's default JWT `scope` claim is a space-separated string; retain that standard format unless you have explicitly tested a customized array format.
 
 ## 3. Configure the gateway
 
-Set environment variables before starting the application:
+Copy `.env.example` to `.env` and update the WSO2 host and audience:
 
 ```bash
-export WSO2_ISSUER_URI="https://your-wso2-host:9443/oauth2/token"
-export WSO2_REQUIRED_AUDIENCE="your-api-audience"
-# Optional: set this to jwks_uri from the discovery document if discovery is non-standard.
-export WSO2_JWKS_URI="https://your-wso2-host:9443/oauth2/jwks"
+cp .env.example .env
 ```
 
-When `WSO2_JWKS_URI` is supplied, the gateway fetches keys directly from that endpoint but still validates the JWT issuer and timestamp claims.
+The default JWKS path is `/oauth2/jwks`. If your WSO2 deployment uses a custom endpoint path, set `WSO2_JWKS_URI` to the actual public JWKS URL. Set `WSO2_ISSUER_URI` to exactly the token's `iss` claim. Set `WSO2_REQUIRED_AUDIENCE` when your API audience is configured.
 
-Leave the audience empty only when the deployment intentionally does not enforce audience validation. For production, configure an explicit audience.
-
-For Docker Compose, copy `.env.example` to `.env` and update the issuer. The hostname must resolve from inside the gateway container and the TLS certificate must be trusted by the JVM.
+The gateway fetches signing keys directly from the configured JWKS endpoint and validates issuer and timestamp claims locally. It does not need to call the OIDC discovery endpoint at startup.
 
 ## 4. TLS trust
 
@@ -58,16 +46,11 @@ Never disable certificate validation. For a private CA or self-signed developmen
 -Djavax.net.ssl.trustStoreType=PKCS12
 ```
 
-Do not commit the truststore or its password.
+Do not commit the truststore or its password. Pass JVM options through `JAVA_TOOL_OPTIONS` or configure the container's Java runtime appropriately.
 
 ## 5. Verify
 
-Fetch the discovery metadata from the gateway runtime network and confirm that:
-
-- the metadata issuer exactly equals `WSO2_ISSUER_URI`;
-- `jwks_uri` is reachable from the gateway;
-- the TLS certificate chain is trusted;
-- an access token has a valid signature, expected issuer, valid time claims, required audience (if configured), and the needed API scope.
+From the gateway runtime network, confirm that the JWKS endpoint is reachable and returns a JSON object containing a `keys` array. Confirm the TLS certificate chain is trusted. Obtain a JWT access token and verify its signature, issuer, time claims, required audience (if configured), and scopes.
 
 Then call:
 
@@ -78,9 +61,8 @@ curl -i http://localhost:8080/api/orders/123 \
 
 A valid token with `orders.read` should reach the Orders backend. Missing/invalid tokens return 401; a valid token without the required scope returns 403; rate-limit exhaustion returns 429; an open circuit returns 503.
 
-
 ## Official WSO2 references
 
-- [Access tokens and JWT validation](https://is.docs.wso2.com/en/latest/references/tokens/access-tokens/)
-- [Validate JWT with JWKS](https://is.docs.wso2.com/en/next/guides/authentication/oidc/validate-jwt-with-jwks/)
-- [OIDC application settings](https://is.docs.wso2.com/en/latest/references/app-settings/oidc-settings-for-app/)
+- [Validate JWT with JWKS](https://is.docs.wso2.com/en/7.0.0/guides/authentication/oidc/validate-jwt-with-jwks/)
+- [WSO2 OAuth and JWKS endpoint configuration](https://is.docs.wso2.com/en/latest/references/configuration-catalog/)
+- [Access token formats and validation](https://is.docs.wso2.com/en/latest/references/tokens/access-tokens/)

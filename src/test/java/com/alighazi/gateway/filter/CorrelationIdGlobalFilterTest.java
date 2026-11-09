@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.web.server.WebFilterChain;
 
 class CorrelationIdGlobalFilterTest {
 
@@ -17,14 +17,14 @@ class CorrelationIdGlobalFilterTest {
     void generatesCorrelationIdWhenHeaderIsMissing() {
         var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/orders").build());
         AtomicReference<String> downstreamId = new AtomicReference<>();
-        GatewayFilterChain chain = next -> {
+        WebFilterChain chain = next -> {
             downstreamId.set(next.getRequest().getHeaders().getFirst(CorrelationIdGlobalFilter.HEADER_NAME));
             return next.getResponse().setComplete();
         };
 
         filter.filter(exchange, chain).block();
 
-        assertThat(downstreamId.get()).isNotBlank();
+        assertThat(downstreamId.get()).matches("[0-9a-f-]{36}");
         assertThat(exchange.getResponse().getHeaders()
                 .getFirst(CorrelationIdGlobalFilter.HEADER_NAME)).isEqualTo(downstreamId.get());
     }
@@ -36,7 +36,7 @@ class CorrelationIdGlobalFilterTest {
                 .header(CorrelationIdGlobalFilter.HEADER_NAME, expected).build();
         var exchange = MockServerWebExchange.from(request);
         AtomicReference<String> downstreamId = new AtomicReference<>();
-        GatewayFilterChain chain = next -> {
+        WebFilterChain chain = next -> {
             downstreamId.set(next.getRequest().getHeaders().getFirst(CorrelationIdGlobalFilter.HEADER_NAME));
             return next.getResponse().setComplete();
         };
@@ -54,13 +54,18 @@ class CorrelationIdGlobalFilterTest {
                 .header(CorrelationIdGlobalFilter.HEADER_NAME, "bad id with spaces").build();
         var exchange = MockServerWebExchange.from(request);
         AtomicReference<String> downstreamId = new AtomicReference<>();
-        GatewayFilterChain chain = next -> {
+        WebFilterChain chain = next -> {
             downstreamId.set(next.getRequest().getHeaders().getFirst(CorrelationIdGlobalFilter.HEADER_NAME));
             return next.getResponse().setComplete();
         };
 
         filter.filter(exchange, chain).block();
 
-        assertThat(downstreamId.get()).matches("[A-Za-z0-9-]{36}");
+        assertThat(downstreamId.get()).matches("[0-9a-f-]{36}");
+    }
+
+    @Test
+    void executesBeforeSecurityFilters() {
+        assertThat(filter.getOrder()).isEqualTo(Integer.MIN_VALUE);
     }
 }

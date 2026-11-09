@@ -5,15 +5,15 @@ A reactive, security-first API Gateway built with Java 21, Spring Boot 4.1, and 
 ## Implemented capabilities
 
 - Spring Cloud Gateway WebFlux routing for Orders and Customers APIs
-- WSO2 JWT signature, issuer, expiry and optional audience validation using OIDC discovery/JWKS
+- WSO2 JWT signature, issuer, expiry and optional audience validation using the configured JWKS endpoint
 - Scope-based authorization: `orders.read` and `customers.read`
 - Redis-backed per-authenticated-principal rate limiting
 - Resilience4j circuit breakers with JSON 503 fallback responses
 - Bounded connection and response timeouts
-- Correlation ID generation, validation and propagation
+- Correlation ID generation before Spring Security, including 401/403 responses
 - Actuator health/info, Micrometer metrics and Prometheus endpoint
 - Docker Compose environment with Redis and WireMock backend services
-- GitHub Actions CI workflow running Maven verification
+- GitHub Actions CI workflow running Maven verification, Compose validation and Docker build
 
 ## Technology stack
 
@@ -21,7 +21,7 @@ A reactive, security-first API Gateway built with Java 21, Spring Boot 4.1, and 
 |---|---|
 | Java | 21 |
 | Spring Boot | 4.1.2 |
-| Spring Cloud | 2025.1.2 |
+| Spring Cloud | 2025.1.4 |
 | Spring Cloud Gateway | 5.x (managed by Spring Cloud BOM) |
 | WSO2 Identity Server | 7.3 (external identity provider) |
 | Redis | 7.4 |
@@ -35,10 +35,13 @@ Client
   |
   | HTTPS + Bearer JWT
   v
-Spring Cloud Gateway
+Correlation ID WebFilter
+  |
+Spring Security
   |-- JWT signature / issuer / expiry / optional audience validation
   |-- OAuth scope authorization
-  |-- Correlation ID
+  |
+Spring Cloud Gateway
   |-- Redis rate limiting
   |-- Circuit breaker + timeouts
   |
@@ -46,8 +49,8 @@ Spring Cloud Gateway
   |
   +---- /api/customers/** -> Customers service
 
-WSO2 IS 7.3 supplies OIDC discovery metadata and signing keys.
-Prometheus scrapes /actuator/prometheus.
+WSO2 IS 7.3 supplies signing keys from /oauth2/jwks.
+Prometheus scrapes /actuator/prometheus (authenticated).
 ```
 
 See [Architecture decisions](docs/architecture.md), [WSO2 IS 7.3 setup](docs/WSO2-IS-7.3.md), and [Operations runbook](docs/runbook.md).
@@ -57,7 +60,7 @@ See [Architecture decisions](docs/architecture.md), [WSO2 IS 7.3 setup](docs/WSO
 Requirements: JDK 21, Maven 3.9+, and Docker Compose v2.
 
 1. Configure WSO2 IS 7.3 and the expected scopes. Follow [the WSO2 integration guide](docs/WSO2-IS-7.3.md).
-2. Copy the environment template and set the actual issuer:
+2. Copy the environment template and set the actual issuer/JWKS host and optional audience:
 
    ```bash
    cp .env.example .env
@@ -90,9 +93,9 @@ The route filters are configured per service. Rate limits are keyed by the authe
 
 | Variable | Default | Description |
 |---|---|---|
-| `WSO2_ISSUER_URI` | `https://localhost:9443/oauth2/token` in app config | Exact JWT `iss` and OIDC issuer |
+| `WSO2_ISSUER_URI` | `https://localhost:9443/oauth2/token` in app config | Exact JWT `iss` claim and configured issuer |
+| `WSO2_JWKS_URI` | `https://localhost:9443/oauth2/jwks` in app config | WSO2 signing-key endpoint; override for custom paths |
 | `WSO2_REQUIRED_AUDIENCE` | empty | If set, required value in JWT `aud` |
-| `WSO2_JWKS_URI` | empty | Optional explicit JWK Set URL when discovery is non-standard |
 | `REDIS_HOST` | `localhost` | Redis hostname |
 | `REDIS_PORT` | `6379` | Redis port |
 | `ORDERS_SERVICE_URI` | `http://localhost:8081` | Orders backend |
@@ -102,7 +105,7 @@ The route filters are configured per service. Rate limits are keyed by the authe
 | `CUSTOMERS_RATE_LIMIT_REPLENISH` | `30` | Customers tokens replenished per second |
 | `CUSTOMERS_RATE_LIMIT_BURST` | `60` | Customers bucket capacity |
 
-**Important:** the issuer configured in the gateway must exactly match the `iss` claim in WSO2 access tokens. In Docker, the issuer hostname must also resolve from the gateway container, and the JVM must trust its TLS certificate. Do not disable TLS verification.
+**Important:** the issuer configured in the gateway must exactly match the `iss` claim in WSO2 access tokens. The configured JWKS endpoint must be reachable from the gateway. In Docker, the WSO2 hostname must resolve from the gateway container, and the JVM must trust its TLS certificate. Do not disable TLS verification.
 
 ## Operational endpoints
 
@@ -135,7 +138,7 @@ Run all local unit tests and package verification:
 mvn --batch-mode clean verify
 ```
 
-GitHub Actions runs the same command for pushes and pull requests targeting `main`. The workflow status is the authoritative CI result; a successful file commit alone does not mean the build passed.
+GitHub Actions runs the same command for pushes and pull requests targeting `main`, validates Compose, and builds the container image. The workflow status is the authoritative CI result; a successful file commit alone does not mean the build passed.
 
 ## Production readiness
 

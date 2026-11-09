@@ -6,15 +6,14 @@ The gateway is the single ingress layer for internal Orders and Customers APIs. 
 
 ## Request flow
 
-1. Client obtains an access token from WSO2 IS using an approved OAuth 2.0 flow.
-2. Client calls the gateway with a bearer token.
-3. Spring Security validates the JWT signature using WSO2's published JWK set and validates issuer/time claims. Audience validation is enabled when `WSO2_REQUIRED_AUDIENCE` is non-empty.
+1. Client obtains a JWT access token from WSO2 IS using an approved OAuth 2.0 flow.
+2. The correlation-ID WebFilter validates or generates `X-Correlation-ID` before Spring Security runs, including for 401/403 responses.
+3. Spring Security validates the JWT signature using WSO2's configured public JWKS endpoint and validates issuer/time claims. Audience validation is enabled when `WSO2_REQUIRED_AUDIENCE` is non-empty.
 4. Route-specific authorization checks the required scope.
-5. The global filter validates or generates `X-Correlation-ID`.
-6. Redis rate limiter enforces a per-principal quota.
-7. Circuit breaker protects the downstream service.
-8. Gateway forwards the request and propagates the correlation ID.
-9. The gateway returns the downstream response or a consistent 503 fallback.
+5. Redis rate limiter enforces a per-principal quota.
+6. Circuit breaker protects the downstream service.
+7. Gateway forwards the request and propagates the correlation ID.
+8. The gateway returns the downstream response or a consistent 503 fallback.
 
 ## Design decisions
 
@@ -24,15 +23,16 @@ Spring Cloud Gateway WebFlux is selected because the gateway is I/O-bound and ne
 
 ### JWT validation instead of token introspection
 
-JWT validation avoids a synchronous introspection call for every request. This requires WSO2 to issue signed JWT access tokens and the gateway to trust the issuer's TLS/JWKS endpoints. If opaque tokens are required, introduce a separately designed reactive opaque-token introspection path.
+JWT validation avoids a synchronous introspection call for every request. This requires WSO2 to issue signed JWT access tokens and the gateway to trust the configured JWKS endpoint's TLS certificate. If opaque tokens are required, introduce a separately designed reactive opaque-token introspection path.
 
 ### Authorization scopes
 
 The current API policies are:
-- `/api/orders/**` requires `orders.read`.
-- `/api/customers/**` requires `customers.read`.
+- `GET /api/orders/**` requires `orders.read`.
+- `GET /api/customers/**` requires `customers.read`.
+- Other methods on these API paths are denied until dedicated write scopes and policies are implemented.
 
-Spring maps these OAuth scopes to `SCOPE_orders.read` and `SCOPE_customers.read`. Add distinct write scopes and method-level policies before enabling mutations.
+Spring maps OAuth scopes to `SCOPE_orders.read` and `SCOPE_customers.read`.
 
 ### Rate limiting
 
@@ -44,7 +44,7 @@ Circuit breakers are isolated per downstream service. The initial defaults are c
 
 ### Correlation IDs
 
-Only IDs matching `[A-Za-z0-9._-]{1,128}` are accepted. Invalid or absent values are replaced with a UUID. The value is forwarded to the backend and returned to the caller.
+Only IDs matching `[A-Za-z0-9._-]{1,128}` are accepted. Invalid or absent values are replaced with a UUID. The value is forwarded to the backend and returned to the caller. The WebFilter runs before Spring Security so rejected requests also carry the identifier.
 
 ## Boundaries and non-goals
 

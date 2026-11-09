@@ -57,7 +57,7 @@ spring:
 
 security:
   jwt:
-    jwk-set-uri: ${WSO2_JWKS_URI:}
+    jwk-set-uri: ${WSO2_JWKS_URI:https://localhost:9443/oauth2/jwks}
     audience: ${WSO2_REQUIRED_AUDIENCE:}
 
 management:
