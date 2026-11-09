@@ -1,0 +1,59 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: enterprise-api-gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${WSO2_ISSUER_URI:http://localhost:9443/oauth2/token}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: orders-service
+              uri: ${ORDERS_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/api/orders/**
+              filters:
+                - StripPrefix=1
+            - id: customers-service
+              uri: ${CUSTOMERS_SERVICE_URI:http://localhost:8082}
+              predicates:
+                - Path=/api/customers/**
+              filters:
+                - StripPrefix=1
+          httpclient:
+            connect-timeout: 3000
+            response-timeout: 10s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,gateway
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      backend:
+        sliding-window-size: 20
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+
+logging:
+  pattern:
+    level: "%5p [correlationId:%X{X-Correlation-ID:-}]"
