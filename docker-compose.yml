@@ -12,19 +12,46 @@ services:
       timeout: 3s
       retries: 5
 
+  orders-mock:
+    image: wiremock/wiremock:3.13.1
+    command: ["--global-response-templating"]
+    volumes:
+      - ./docker/wiremock/orders:/home/wiremock
+    ports:
+      - "8081:8080"
+
+  customers-mock:
+    image: wiremock/wiremock:3.13.1
+    command: ["--global-response-templating"]
+    volumes:
+      - ./docker/wiremock/customers:/home/wiremock
+    ports:
+      - "8082:8080"
+
   gateway:
     build: .
     image: enterprise-api-gateway:local
     depends_on:
       redis:
         condition: service_healthy
+      orders-mock:
+        condition: service_started
+      customers-mock:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8080:8080"
     environment:
       REDIS_HOST: redis
       WSO2_ISSUER_URI: ${WSO2_ISSUER_URI:-https://host.docker.internal:9443/oauth2/token}
-      ORDERS_SERVICE_URI: ${ORDERS_SERVICE_URI:-http://host.docker.internal:8081}
-      CUSTOMERS_SERVICE_URI: ${CUSTOMERS_SERVICE_URI:-http://host.docker.internal:8082}
+      WSO2_REQUIRED_AUDIENCE: ${WSO2_REQUIRED_AUDIENCE:-}
+      ORDERS_SERVICE_URI: http://orders-mock:8080
+      CUSTOMERS_SERVICE_URI: http://customers-mock:8080
+      ORDERS_RATE_LIMIT_REPLENISH: ${ORDERS_RATE_LIMIT_REPLENISH:-20}
+      ORDERS_RATE_LIMIT_BURST: ${ORDERS_RATE_LIMIT_BURST:-40}
+      CUSTOMERS_RATE_LIMIT_REPLENISH: ${CUSTOMERS_RATE_LIMIT_REPLENISH:-30}
+      CUSTOMERS_RATE_LIMIT_BURST: ${CUSTOMERS_RATE_LIMIT_BURST:-60}
 
 volumes:
   redis-data:
