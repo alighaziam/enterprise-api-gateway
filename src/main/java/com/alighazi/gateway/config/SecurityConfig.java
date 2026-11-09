@@ -39,9 +39,12 @@ public class SecurityConfig {
     @Bean
     ReactiveJwtDecoder jwtDecoder(
             @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuerUri,
+            @Value("${security.jwt.jwk-set-uri:}") String jwkSetUri,
             @Value("${security.jwt.audience:}") String requiredAudience) {
 
-        NimbusReactiveJwtDecoder decoder = NimbusReactiveJwtDecoder.withIssuerLocation(issuerUri).build();
+        NimbusReactiveJwtDecoder decoder = jwkSetUri == null || jwkSetUri.isBlank()
+                ? NimbusReactiveJwtDecoder.withIssuerLocation(issuerUri).build()
+                : NimbusReactiveJwtDecoder.withJwkSetUri(jwkSetUri).build();
         OAuth2TokenValidator<Jwt> issuerValidator = JwtValidators.createDefaultWithIssuer(issuerUri);
 
         if (requiredAudience == null || requiredAudience.isBlank()) {
