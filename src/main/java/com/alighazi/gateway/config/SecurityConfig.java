@@ -50,10 +50,13 @@ public class SecurityConfig {
         if (requiredAudience == null || requiredAudience.isBlank()) {
             decoder.setJwtValidator(issuerValidator);
         } else {
-            OAuth2TokenValidator<Jwt> audienceValidator = jwt -> jwt.getAudience().contains(requiredAudience)
-                    ? OAuth2TokenValidatorResult.success()
-                    : OAuth2TokenValidatorResult.failure(
-                            new OAuth2Error("invalid_token", "Required audience is missing", null));
+            OAuth2TokenValidator<Jwt> audienceValidator = jwt -> {
+                var audience = jwt.getAudience();
+                return audience != null && audience.contains(requiredAudience)
+                        ? OAuth2TokenValidatorResult.success()
+                        : OAuth2TokenValidatorResult.failure(
+                                new OAuth2Error("invalid_token", "Required audience is missing", null));
+            };
             decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(issuerValidator, audienceValidator));
         }
         return decoder;

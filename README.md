@@ -1,6 +1,6 @@
 # Enterprise API Gateway
 
-A reactive, security-first API Gateway built with Java 21, Spring Boot 4.1, and Spring Cloud Gateway 5. It validates WSO2 Identity Server 7.3 JWT access tokens and applies API scopes, Redis rate limits, circuit breakers, and correlation IDs before forwarding requests to backend services.
+A reactive, security-first API Gateway built with Java 21, Spring Boot 3.5, and Spring Cloud Gateway. It validates WSO2 Identity Server 7.3 JWT access tokens and applies API scopes, Redis rate limits, circuit breakers, and correlation IDs before forwarding requests to backend services.
 
 ## Implemented capabilities
 
@@ -20,9 +20,9 @@ A reactive, security-first API Gateway built with Java 21, Spring Boot 4.1, and 
 | Component | Version |
 |---|---|
 | Java | 21 |
-| Spring Boot | 4.1.2 |
-| Spring Cloud | 2025.1.4 |
-| Spring Cloud Gateway | 5.x (managed by Spring Cloud BOM) |
+| Spring Boot | 3.5.13 |
+| Spring Cloud | 2025.0.0 |
+| Spring Cloud Gateway | 4.3.0 (managed by Spring Cloud BOM) |
 | WSO2 Identity Server | 7.3 (external identity provider) |
 | Redis | 7.4 |
 | Resilience4j | Managed by Spring Cloud |
