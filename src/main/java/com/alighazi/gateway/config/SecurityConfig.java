@@ -7,9 +7,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
-import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
@@ -26,6 +24,8 @@ public class SecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .pathMatchers("/", "/index.html", "/favicon.ico", "/fonts/**", "/api/console/**").permitAll()
+                        .pathMatchers("/swagger-ui.html", "/openapi.json", "/webjars/**", "/jwks").permitAll()
                         .pathMatchers("/actuator/health", "/actuator/info").permitAll()
                         .pathMatchers("/fallback/**").denyAll()
                         .pathMatchers(HttpMethod.GET, "/api/orders/**").hasAuthority("SCOPE_orders.read")
@@ -50,14 +50,8 @@ public class SecurityConfig {
         if (requiredAudience == null || requiredAudience.isBlank()) {
             decoder.setJwtValidator(issuerValidator);
         } else {
-            OAuth2TokenValidator<Jwt> audienceValidator = jwt -> {
-                var audience = jwt.getAudience();
-                return audience != null && audience.contains(requiredAudience)
-                        ? OAuth2TokenValidatorResult.success()
-                        : OAuth2TokenValidatorResult.failure(
-                                new OAuth2Error("invalid_token", "Required audience is missing", null));
-            };
-            decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(issuerValidator, audienceValidator));
+            decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                    issuerValidator, new AudienceValidator(requiredAudience)));
         }
         return decoder;
     }

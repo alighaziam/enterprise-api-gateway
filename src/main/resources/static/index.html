@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>کنسول دروازه API</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23141a12'/%3E%3Cpath d='M8 16h16M16 8v16' stroke='%23e0b15a' stroke-width='2'/%3E%3C/svg%3E">
+  <script>
+    (function () {
+      var lang = "fa";
+      try { lang = localStorage.getItem("eag-lang") === "en" ? "en" : "fa"; } catch (e) {}
+      document.documentElement.lang = lang;
+      document.documentElement.dir = lang === "fa" ? "rtl" : "ltr";
+      document.title = lang === "en" ? "API Gateway Console" : "کنسول دروازه API";
+    })();
+  </script>
+  <style>
+    @font-face {
+      font-family: Vazirmatn;
+      src: url("/fonts/Vazirmatn-wght.woff2") format("woff2");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+    :root {
+      --bg: #10140f;
+      --card: #1b2318;
+      --line: rgba(224, 214, 186, 0.14);
+      --text: #f4f1e8;
+      --muted: #a7ae9d;
+      --brass: #e0b15a;
+      --up: #9dcc73;
+      --down: #e07a68;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    html[lang="fa"] { font-family: Vazirmatn, Tahoma, sans-serif; line-height: 1.75; }
+    html[lang="en"] { font-family: "Segoe UI", "Segoe UI Variable Text", system-ui, sans-serif; line-height: 1.5; }
+    body {
+      font-family: inherit;
+      background:
+        radial-gradient(1200px 500px at 100% -10%, rgba(224, 177, 90, 0.16), transparent 55%),
+        radial-gradient(900px 420px at 0% 100%, rgba(157, 204, 115, 0.08), transparent 50%),
+        var(--bg);
+      color: var(--text);
+    }
+    .wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+    header.top {
+      display: flex; justify-content: space-between; gap: 24px; align-items: flex-end;
+      padding: 36px 0 22px;
+    }
+    .eyebrow {
+      margin: 0 0 6px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--brass); font-size: 12px; font-family: "Segoe UI", Vazirmatn, sans-serif;
+    }
+    h1, h2 { line-height: 1.25; }
+    h1 { margin: 0; font-size: 40px; font-weight: 700; letter-spacing: -0.03em; }
+    html[lang="fa"] h1 { letter-spacing: 0; }
+    .lede { margin: 8px 0 0; color: var(--muted); max-width: 58ch; }
+    .meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
+    .pill, button.pill {
+      border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03);
+      border-radius: 999px; padding: 6px 12px; color: inherit; text-decoration: none;
+      font: inherit; cursor: pointer;
+    }
+    a.pill:hover, button.pill:hover { border-color: var(--brass); color: var(--brass); }
+    .pill.warn { color: var(--brass); border-color: rgba(224, 177, 90, 0.45); }
+    .pill.ok { color: var(--up); border-color: rgba(157, 204, 115, 0.45); }
+    .lang { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+    .lang button {
+      background: transparent; color: var(--muted); border: 0; border-radius: 0;
+      padding: 6px 12px; cursor: pointer; font-weight: 650;
+    }
+    .lang button[lang="fa"] { font-family: Vazirmatn, Tahoma, sans-serif; }
+    .lang button[lang="en"] { font-family: "Segoe UI", system-ui, sans-serif; }
+    .lang button[aria-pressed="true"] { background: var(--brass); color: #1a1408; }
+    .live { display: inline-flex; align-items: center; gap: 8px; }
+    .live i {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--up);
+      box-shadow: 0 0 0 0 rgba(157, 204, 115, 0.7); animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse {
+      70% { box-shadow: 0 0 0 8px rgba(157, 204, 115, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(157, 204, 115, 0); }
+    }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .card, .panel, .pipe {
+      background: linear-gradient(180deg, rgba(255,255,255,0.025), transparent 28%), var(--card);
+      border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow);
+    }
+    .card { padding: 18px 18px 16px; min-height: 132px; }
+    .card.up { box-shadow: inset 0 2px 0 var(--up), var(--shadow); }
+    .card.down { box-shadow: inset 0 2px 0 var(--down), var(--shadow); }
+    .card .label { color: var(--muted); font-size: 13px; }
+    .state { margin: 10px 0 6px; font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
+    html[lang="fa"] .state { letter-spacing: 0; }
+    .state.up { color: var(--up); }
+    .state.down { color: var(--down); }
+    .state.wait { color: var(--muted); font-size: 18px; }
+    .detail { color: var(--muted); font-size: 13px; min-height: 2.4em; }
+    .latency { margin-top: 12px; font-variant-numeric: tabular-nums; color: var(--brass); font-size: 12px; }
+    .pipeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 14px; }
+    .pipe { padding: 14px 14px 12px; box-shadow: none; }
+    .pipe .step { color: var(--brass); font-size: 11px; letter-spacing: 0.08em; }
+    .pipe strong { display: block; margin: 6px 0 4px; font-size: 15px; }
+    .pipe span { color: var(--muted); font-size: 12px; }
+    .workspace { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 14px; margin: 14px 0 18px; }
+    .panel { padding: 22px; }
+    .panel h2 { margin: 0 0 6px; font-size: 20px; }
+    .panel p.hint { margin: 0 0 18px; color: var(--muted); font-size: 14px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: start; padding: 12px 8px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; font-size: 12px; }
+    code, .ltr, pre {
+      direction: ltr; unicode-bidi: isolate;
+      font-family: Consolas, "Cascadia Mono", "Segoe UI Mono", ui-monospace, monospace;
+    }
+    .method {
+      display: inline-block; border: 1px solid rgba(224, 177, 90, 0.45); color: var(--brass);
+      border-radius: 999px; padding: 2px 8px; font-size: 12px;
+    }
+    dl.facts { display: grid; grid-template-columns: 8.5rem 1fr; gap: 10px 12px; margin: 18px 0 0; }
+    dt { color: var(--muted); font-size: 13px; }
+    dd { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+    form { display: grid; gap: 12px; }
+    label, legend { font-size: 13px; color: var(--muted); }
+    label { display: grid; gap: 6px; }
+    input, select, button {
+      font: inherit; color: var(--text); background: #121810;
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+    }
+    input:focus, select:focus, button:focus { outline: 2px solid rgba(224, 177, 90, 0.55); outline-offset: 2px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    button[type="submit"] { background: var(--brass); color: #1a1408; font-weight: 700; cursor: pointer; border: 0; }
+    button[type="submit"]:hover { filter: brightness(1.05); }
+    button:disabled { opacity: 0.55; cursor: progress; }
+    button.ghost { background: transparent; color: var(--brass); border: 1px solid rgba(224, 177, 90, 0.45); cursor: pointer; }
+    fieldset { border: 1px solid var(--line); border-radius: 12px; margin: 0; padding: 10px 12px 12px; }
+    legend { padding: 0 6px; }
+    .checks { display: flex; gap: 16px; flex-wrap: wrap; }
+    .checks label { display: flex; align-items: center; gap: 8px; color: var(--text); }
+    .checks input { width: 16px; height: 16px; padding: 0; accent-color: var(--brass); }
+    .preview, .claims {
+      background: #10160f; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+      color: var(--muted); font-size: 12px;
+    }
+    .claims strong { color: var(--text); font-weight: 650; }
+    .token-line { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+    .token-line button { padding: 12px 14px; }
+    .result {
+      margin-top: 4px; background: #10160f; border-radius: 14px; border: 1px solid var(--line);
+      min-height: 140px; padding: 14px;
+    }
+    .result header { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .badge { font-weight: 750; font-size: 22px; letter-spacing: -0.04em; }
+    .badge.ok { color: var(--up); }
+    .badge.expected { color: var(--brass); }
+    .badge.bad { color: var(--down); }
+    pre {
+      margin: 12px 0 0; white-space: pre-wrap; word-break: break-word; color: #d9e2cf;
+      font-size: 13px; line-height: 1.6;
+    }
+    .meaning, .meta-line { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+    .copy {
+      background: transparent; color: var(--brass); border: 1px solid rgba(224, 177, 90, 0.4);
+      padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    .history { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+    .history li {
+      display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--muted);
+      border-bottom: 1px solid var(--line); padding-bottom: 6px;
+    }
+    .history b { font-weight: 700; }
+    .history b.ok { color: var(--up); }
+    .history b.expected { color: var(--brass); }
+    .history b.bad { color: var(--down); }
+    footer { color: var(--muted); font-size: 12px; padding-bottom: 28px; }
+    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+    .control header, .activity-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .control h3, .activity-head h2 { margin: 0; font-size: 20px; }
+    .switch { border-radius: 999px; font-weight: 700; cursor: pointer; }
+    .switch.on { background: var(--up); color: #14210c; border: 0; }
+    .switch.off { background: transparent; color: var(--down); border: 1px solid var(--down); }
+    .conn { margin: 10px 0; color: var(--muted); font-size: 13px; }
+    .conn.UP { color: var(--up); }
+    .conn.DOWN { color: var(--down); }
+    .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 12px 0; }
+    .stat { background: #10160f; border: 1px solid var(--line); border-radius: 12px; padding: 8px; }
+    .stat span { display: block; color: var(--muted); font-size: 11px; }
+    .stat b { display: block; margin-top: 4px; font-size: 18px; font-weight: 700; }
+    .rate-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+    .rate-form input { padding: 10px 12px; }
+    .rate-form button { padding: 10px 14px; }
+    .form-note { min-height: 1.4em; margin: 8px 0 0; color: var(--brass); font-size: 12px; }
+    .activity-panel { margin-top: 14px; }
+    .activity { list-style: none; margin: 12px 0 0; padding: 0; }
+    .activity li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+    .activity .kind { font-weight: 700; }
+    .activity .kind.UP, .activity .kind.ENABLED { color: var(--up); }
+    .activity .kind.DOWN, .activity .kind.DISABLED { color: var(--down); }
+    .activity time, .activity .who { color: var(--muted); }
+    @media (max-width: 980px) {
+      .grid, .pipeline, .controls, .stats { grid-template-columns: 1fr 1fr; }
+      .workspace, .row, dl.facts, .rate-form { grid-template-columns: 1fr; }
+      header.top { flex-direction: column; align-items: flex-start; }
+      h1 { font-size: 32px; }
+    }
+    @media (max-width: 640px) {
+      .grid, .pipeline, .controls, .stats { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) { .live i { animation: none; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div>
+        <p class="eyebrow" lang="en" dir="ltr">Enterprise API Gateway</p>
+        <h1 data-i18n="h1">کنسول عملیاتی</h1>
+        <p class="lede" data-i18n="lede">درخواست از احراز JWT و شناسهٔ همبستگی می‌گذرد، با سقف Redis و مدارشکن سنجیده می‌شود، بعد به سرویس پشتیبان می‌رسد.</p>
+      </div>
+      <div class="meta">
+        <div class="lang" role="group" data-i18n-aria="language" aria-label="زبان">
+          <button type="button" lang="fa" dir="rtl" data-lang="fa" aria-pressed="true">فارسی</button>
+          <button type="button" lang="en" dir="ltr" data-lang="en" aria-pressed="false">English</button>
+        </div>
+        <a class="pill" href="/swagger-ui.html">Swagger</a>
+        <span class="pill" id="mode" data-i18n="reading">در حال خواندن سیاست</span>
+        <button class="pill" id="refresh" type="button" data-i18n="refresh">بررسی دوباره</button>
+        <span class="pill live"><i></i><span data-i18n="live">زنده</span></span>
+        <span class="pill" id="clock" dir="ltr">—</span>
+      </div>
+    </header>
+
+    <section class="grid" id="status" aria-live="polite"></section>
+    <section class="pipeline" id="pipeline" data-i18n-aria="flow" aria-label="مسیر درخواست"></section>
+    <section class="controls" id="controls" data-i18n-aria="controls" aria-label="کنترل سرویس‌ها"></section>
+    <article class="panel activity-panel">
+      <div class="activity-head">
+        <h2 data-i18n="activityTitle">گزارش قطع و وصل</h2>
+      </div>
+      <p class="hint" data-i18n="activityHint">هر بار که اتصال یک سرویس عوض شود، یا اپراتور آن را فعال و غیرفعال کند، اینجا می‌ماند.</p>
+      <ol class="activity" id="activity"></ol>
+    </article>
+
+    <section class="workspace">
+      <article class="panel">
+        <h2 data-i18n="routesTitle">مسیرها</h2>
+        <p class="hint" data-i18n="routesHint">فقط GET با اسکوپ همان مسیر عبور می‌کند. POST و بقیهٔ روش‌ها حتی با توکن درست رد می‌شوند.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="colMethod">روش</th>
+                <th data-i18n="colPath">مسیر</th>
+                <th data-i18n="colScope">اسکوپ</th>
+                <th data-i18n="colLimit">سقف</th>
+                <th data-i18n="colBackend">پشتیبان</th>
+              </tr>
+            </thead>
+            <tbody id="routes"></tbody>
+          </table>
+        </div>
+        <dl class="facts" id="facts"></dl>
+      </article>
+
+      <article class="panel">
+        <h2 data-i18n="labTitle">آزمایش درخواست</h2>
+        <p class="hint" data-i18n="labHint">توکن را بگذارید یا با توکن آزمایشی همین اجرا بفرستید. هر کد وضعیت پایین توضیح داده می‌شود.</p>
+        <form id="lab">
+          <div class="row">
+            <label>
+              <span data-i18n="service">سرویس</span>
+              <select id="service" name="service">
+                <option value="orders" data-i18n="orders">سفارش‌ها</option>
+                <option value="customers" data-i18n="customers">مشتریان</option>
+              </select>
+            </label>
+            <label>
+              <span data-i18n="resource">شناسه</span>
+              <input id="resourceId" name="resourceId" value="123" dir="ltr" autocomplete="off" maxlength="64">
+            </label>
+          </div>
+          <fieldset>
+            <legend data-i18n="scopes">اسکوپ توکن آزمایشی</legend>
+            <div class="checks">
+              <label><input type="checkbox" name="scope" value="orders.read" checked><span class="ltr">orders.read</span></label>
+              <label><input type="checkbox" name="scope" value="customers.read" checked><span class="ltr">customers.read</span></label>
+            </div>
+          </fieldset>
+          <label>
+            <span data-i18n="token">توکن دسترسی</span>
+            <span class="token-line">
+              <input id="token" name="token" type="password" dir="ltr" data-i18n-placeholder="tokenPlaceholder" placeholder="خالی بماند تا پاسخ ۴۰۱ را ببینید" autocomplete="off" spellcheck="false">
+              <button class="ghost" id="reveal" type="button">نمایش</button>
+            </span>
+          </label>
+          <p class="preview" id="preview"></p>
+          <div class="claims" id="claims" hidden></div>
+          <button type="submit" id="send" data-i18n="send">ارسال از دروازه</button>
+          <button class="ghost" id="demo" type="button" data-i18n="demo">توکن آزمایشی و ارسال</button>
+        </form>
+        <div class="result" id="result" aria-live="polite">
+          <header>
+            <span class="badge" id="code" dir="ltr">—</span>
+            <button class="copy" id="copy" type="button" hidden>کپی شناسه</button>
+          </header>
+          <p class="meaning" id="meaning" data-i18n="emptyResult">هنوز درخواستی فرستاده نشده است.</p>
+          <p class="meta-line" id="meta-line" hidden></p>
+          <pre id="body" dir="ltr" hidden></pre>
+        </div>
+        <ol class="history" id="history"></ol>
+      </article>
+    </section>
+    <footer id="checked" data-i18n="footerWaiting">هنوز بررسی نشده است.</footer>
+  </div>
+  <script>
+    const COPY = {
+      fa: {
+        title: "کنسول دروازه API",
+        h1: "کنسول عملیاتی",
+        lede: "درخواست از احراز JWT و شناسهٔ همبستگی می‌گذرد، با سقف Redis و مدارشکن سنجیده می‌شود، بعد به سرویس پشتیبان می‌رسد.",
+        language: "زبان",
+        reading: "در حال خواندن سیاست",
+        refresh: "بررسی دوباره",
+        live: "زنده",
+        flow: "مسیر درخواست",
+        routesTitle: "مسیرها",
+        routesHint: "فقط GET با اسکوپ همان مسیر عبور می‌کند. POST و بقیهٔ روش‌ها حتی با توکن درست رد می‌شوند.",
+        colMethod: "روش", colPath: "مسیر", colScope: "اسکوپ", colLimit: "سقف", colBackend: "پشتیبان",
+        labTitle: "آزمایش درخواست",
+        labHint: "توکن را بگذارید یا با توکن آزمایشی همین اجرا بفرستید. هر کد وضعیت پایین توضیح داده می‌شود.",
+        service: "سرویس", orders: "سفارش‌ها", customers: "مشتریان", resource: "شناسه",
+        scopes: "اسکوپ توکن آزمایشی", token: "توکن دسترسی",
+        tokenPlaceholder: "خالی بماند تا پاسخ ۴۰۱ را ببینید",
+        reveal: "نمایش", hide: "پنهان", send: "ارسال از دروازه", demo: "توکن آزمایشی و ارسال",
+        copy: "کپی شناسه", copied: "کپی شد",
+        emptyResult: "هنوز درخواستی فرستاده نشده است.",
+        footerWaiting: "هنوز بررسی نشده است.",
+        footerFail: "وضعیت از دروازه خوانده نشد.",
+        modeLocal: "توکن محلی روشن", modeWso2: "فقط توکن WSO2",
+        checking: "در حال بررسی", pending: "وضعیت هنوز نرسیده است.",
+        up: "فعال", down: "قطع",
+        svcGateway: "دروازه", svcOrders: "سفارش‌ها", svcCustomers: "مشتریان",
+        gatewayUp: "فرآیند در حال پاسخ است",
+        noDetail: "بدون جزئیات",
+        stepClient: "کلاینت", stepJwt: "احراز JWT", stepLimit: "سقف Redis", stepBreaker: "مدارشکن", stepBackend: "سرویس پشتیبان",
+        factApp: "برنامه", factIssuer: "صادرکننده", factAudience: "مخاطب", factLocal: "توکن محلی", factId: "شناسه", factBreaker: "مدارشکن",
+        audienceOff: "الزامی نیست",
+        localOn: "روشن است؛ دکمهٔ آزمایشی توکن ۱۵ دقیقه‌ای می‌سازد.",
+        localOff: "خاموش است. فقط توکن WSO2 پذیرفته می‌شود.",
+        badId: "شناسه فقط حرف، عدد، نقطه، خط و زیرخط می‌پذیرد.",
+        fixId: "شناسه را اصلاح کنید و دوباره بفرستید.",
+        pickScope: "دست‌کم یک اسکوپ برای توکن آزمایشی انتخاب کنید.",
+        tokenOff: "توکن آزمایشی روی این اجرا خاموش است. دروازه فقط توکن WSO2 را می‌پذیرد.",
+        tokenFail: "توکن آزمایشی ساخته نشد.",
+        network: "دروازه پاسخ نداد. اتصال یا فرآیند را بررسی کنید.",
+        unreadable: "این مقدار JWT قابل‌خواندن نیست.",
+        missingScope: "اسکوپ لازم این مسیر داخل توکن نیست.",
+        claimSub: "موضوع", claimScope: "اسکوپ", claimAud: "مخاطب", claimLeft: "مانده", claimIss: "صادرکننده",
+        none: "ندارد", unknown: "نامشخص", seconds: "ثانیه",
+        required: "اسکوپ لازم",
+        ms: "میلی‌ثانیه",
+        controls: "کنترل سرویس‌ها",
+        activityTitle: "گزارش قطع و وصل",
+        activityHint: "هر بار که اتصال یک سرویس عوض شود، یا اپراتور آن را فعال و غیرفعال کند، اینجا می‌ماند.",
+        activityEmpty: "هنوز تغییری ثبت نشده است.",
+        enable: "فعال",
+        disable: "غیرفعال",
+        connected: "متصل",
+        disconnected: "قطع",
+        unseen: "هنوز بررسی نشده",
+        since: "از",
+        calls: "فراخوانی",
+        succeeded: "موفق",
+        limited: "سقف",
+        rejected: "رد شده",
+        failed: "خطا",
+        perSecond: "در ثانیه",
+        burst: "انباشت",
+        saveLimit: "ثبت سقف",
+        circuit: "مدارشکن",
+        transitions: "تغییر اتصال",
+        saved: "سقف ذخیره شد و از درخواست بعدی اعمال می‌شود.",
+        rateRange: "نرخ باید بین ۱ و ۱۰۰۰ و انباشت بین ۱ و ۵۰۰۰ باشد.",
+        burstBelow: "انباشت نباید از نرخ پرشدن کمتر باشد.",
+        unknownService: "این سرویس قابل کنترل نیست.",
+        saveFail: "تغییر ذخیره نشد.",
+        disabledMeaning: "اپراتور این سرویس را غیرفعال کرده است. تا فعال شدن دوباره، دروازه ۵۰۳ برمی‌گرداند.",
+        kindUP: "وصل شد",
+        kindDOWN: "قطع شد",
+        kindENABLED: "فعال شد",
+        kindDISABLED: "غیرفعال شد",
+        circuitCLOSED: "عادی",
+        circuitOPEN: "باز",
+        circuitHALF_OPEN: "نیمه‌باز",
+        circuitDISABLED: "خاموش",
+        circuitUNKNOWN: "نامشخص"
+      },
+      en: {
+        title: "API Gateway Console",
+        h1: "Operations console",
+        lede: "A request is authenticated as a JWT, tagged with a correlation id, then metered by Redis and guarded by a circuit breaker before it reaches the backend.",
+        language: "Language",
+        reading: "Reading policy",
+        refresh: "Check again",
+        live: "Live",
+        flow: "Request path",
+        routesTitle: "Routes",
+        routesHint: "Only GET with the route’s own scope is allowed. POST and every other method are rejected even with a valid token.",
+        colMethod: "Method", colPath: "Path", colScope: "Scope", colLimit: "Limit", colBackend: "Backend",
+        labTitle: "Try a request",
+        labHint: "Paste a token or mint a local demo token. Each status code is explained under the result.",
+        service: "Service", orders: "Orders", customers: "Customers", resource: "Id",
+        scopes: "Demo token scopes", token: "Access token",
+        tokenPlaceholder: "Leave empty to see a 401",
+        reveal: "Show", hide: "Hide", send: "Send through the gateway", demo: "Demo token and send",
+        copy: "Copy id", copied: "Copied",
+        emptyResult: "No request sent yet.",
+        footerWaiting: "Not checked yet.",
+        footerFail: "Could not read status from the gateway.",
+        modeLocal: "Local tokens on", modeWso2: "WSO2 tokens only",
+        checking: "Checking", pending: "Status has not arrived.",
+        up: "Up", down: "Down",
+        svcGateway: "Gateway", svcOrders: "Orders", svcCustomers: "Customers",
+        gatewayUp: "Process is accepting requests",
+        noDetail: "No detail",
+        stepClient: "Client", stepJwt: "JWT check", stepLimit: "Redis limit", stepBreaker: "Circuit breaker", stepBackend: "Backend",
+        factApp: "Application", factIssuer: "Issuer", factAudience: "Audience", factLocal: "Local tokens", factId: "Correlation", factBreaker: "Breaker",
+        audienceOff: "Not required",
+        localOn: "On. The demo button mints a token that lasts 15 minutes.",
+        localOff: "Off. Only WSO2 tokens are accepted.",
+        badId: "The id may contain only letters, digits, dot, hyphen, and underscore.",
+        fixId: "Correct the id, then send again.",
+        pickScope: "Choose at least one scope for the demo token.",
+        tokenOff: "Demo tokens are off for this process. The gateway accepts only WSO2 tokens.",
+        tokenFail: "The demo token was not issued.",
+        network: "The gateway did not respond. Check the process and the connection.",
+        unreadable: "This value is not a readable JWT.",
+        missingScope: "The token does not include the scope this route requires.",
+        claimSub: "Subject", claimScope: "Scope", claimAud: "Audience", claimLeft: "Left", claimIss: "Issuer",
+        none: "none", unknown: "unknown", seconds: "seconds",
+        required: "Required scope",
+        ms: "ms",
+        controls: "Service controls",
+        activityTitle: "Connection report",
+        activityHint: "A line is kept each time a service connects or drops, and each time an operator enables or disables it.",
+        activityEmpty: "No change has been recorded yet.",
+        enable: "Enabled",
+        disable: "Disabled",
+        connected: "Connected",
+        disconnected: "Disconnected",
+        unseen: "Not checked yet",
+        since: "since",
+        calls: "Calls",
+        succeeded: "Succeeded",
+        limited: "Limited",
+        rejected: "Rejected",
+        failed: "Failed",
+        perSecond: "per second",
+        burst: "Burst",
+        saveLimit: "Save limit",
+        circuit: "Breaker",
+        transitions: "Connection changes",
+        saved: "Limit saved. It applies on the next request.",
+        rateRange: "The rate must be from 1 to 1000 and the burst from 1 to 5000.",
+        burstBelow: "Burst cannot be lower than the replenish rate.",
+        unknownService: "This service cannot be controlled.",
+        saveFail: "The change was not saved.",
+        disabledMeaning: "An operator disabled this service. The gateway returns 503 until it is enabled again.",
+        kindUP: "Connected",
+        kindDOWN: "Disconnected",
+        kindENABLED: "Enabled",
+        kindDISABLED: "Disabled",
+        circuitCLOSED: "Closed",
+        circuitOPEN: "Open",
+        circuitHALF_OPEN: "Half-open",
+        circuitDISABLED: "Disabled",
+        circuitUNKNOWN: "Unknown"
+      }
+    };
+
+    const meanings = {
+      fa: {
+        200: "درخواست از دروازه گذشت و سرویس پشتیبان پاسخ داد.",
+        401: "توکن نیست، امضا یا صادرکننده نادرست است، یا زمان توکن گذشته.",
+        403: "توکن پذیرفته شد ولی اسکوپ این مسیر را ندارد، یا روش درخواست مجاز نیست.",
+        404: "این مسیر روی دروازه تعریف نشده است.",
+        429: "سقف این کاربر پر شده است. چند ثانیه بعد دوباره بفرستید.",
+        500: "خطای داخلی دروازه. شناسهٔ همبستگی را برای لاگ نگه دارید.",
+        502: "سرویس پشتیبان پاسخ نامعتبر داد.",
+        503: "مدارشکن باز است یا سرویس پشتیبان در دسترس نیست. پاسخ جایگزین ۵۰۳ است.",
+        other: "پاسخ خارج از کدهای تعریف‌شدهٔ این دروازه است."
+      },
+      en: {
+        200: "The gateway forwarded the request and the backend answered.",
+        401: "The token is missing, the signature or issuer is wrong, or the token has expired.",
+        403: "The token was accepted, but it lacks this route’s scope or the method is not allowed.",
+        404: "This path is not defined on the gateway.",
+        429: "This caller has used its rate limit. Wait a few seconds and send again.",
+        500: "The gateway failed internally. Keep the correlation id for the logs.",
+        502: "The backend returned an invalid response.",
+        503: "The circuit breaker is open or the backend is unavailable. The fallback answer is 503.",
+        other: "The status is outside the codes this gateway documents."
+      }
+    };
+
+    let current = document.documentElement.lang === "en" ? "en" : "fa";
+    let latestSnapshot = null;
+    let lastResult = null;
+    let lastCorrelation = "";
+    let copyDone = false;
+    const history = [];
+
+    const statusRoot = document.querySelector("#status");
+    const routesBody = document.querySelector("#routes");
+    const facts = document.querySelector("#facts");
+    const pipeline = document.querySelector("#pipeline");
+    const mode = document.querySelector("#mode");
+    const clock = document.querySelector("#clock");
+    const checked = document.querySelector("#checked");
+    const codeEl = document.querySelector("#code");
+    const bodyEl = document.querySelector("#body");
+    const meaningEl = document.querySelector("#meaning");
+    const metaLine = document.querySelector("#meta-line");
+    const copyBtn = document.querySelector("#copy");
+    const preview = document.querySelector("#preview");
+    const claimsEl = document.querySelector("#claims");
+    const historyEl = document.querySelector("#history");
+    const tokenInput = document.querySelector("#token");
+    const sendBtn = document.querySelector("#send");
+    const demoBtn = document.querySelector("#demo");
+    const serviceSelect = document.querySelector("#service");
+    const idInput = document.querySelector("#resourceId");
+    const revealBtn = document.querySelector("#reveal");
+
+    function t() { return COPY[current]; }
+    function locale() { return current === "fa" ? "fa-IR" : "en-US"; }
+    function num(value) { return new Intl.NumberFormat(locale()).format(value); }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+      }[ch]));
+    }
+
+    function ltr(value) {
+      return `<bdi class="ltr" dir="ltr">${escapeHtml(value)}</bdi>`;
+    }
+
+    function applyStatic() {
+      const text = t();
+      document.title = text.title;
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        const key = el.dataset.i18n;
+        if (key === "emptyResult" && lastResult) return;
+        if (key === "footerWaiting" && latestSnapshot) return;
+        if (key === "reading" && latestSnapshot) return;
+        if (text[key] !== undefined) el.textContent = text[key];
+      });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+        el.placeholder = text[el.dataset.i18nPlaceholder];
+      });
+      document.querySelectorAll("[data-i18n-aria]").forEach((el) => {
+        el.setAttribute("aria-label", text[el.dataset.i18nAria]);
+      });
+      revealBtn.textContent = tokenInput.type === "password" ? text.reveal : text.hide;
+      copyBtn.textContent = copyDone ? text.copied : text.copy;
+      document.querySelectorAll(".lang button").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.lang === current));
+      });
+    }
+
+    function setLang(lang) {
+      current = lang === "en" ? "en" : "fa";
+      document.documentElement.lang = current;
+      document.documentElement.dir = current === "fa" ? "rtl" : "ltr";
+      try { localStorage.setItem("eag-lang", current); } catch (e) { /* private mode */ }
+      applyStatic();
+      if (latestSnapshot) {
+        mode.textContent = latestSnapshot.context.localTokensEnabled ? t().modeLocal : t().modeWso2;
+        mode.className = "pill " + (latestSnapshot.context.localTokensEnabled ? "ok" : "warn");
+      }
+      renderStatus();
+      renderFlow();
+      renderRoutes();
+      renderFacts();
+      renderControls();
+      renderActivity();
+      paintPreview();
+      paintClaims();
+      renderHistory();
+      paintResult();
+      if (latestSnapshot) paintFooter(latestSnapshot.checkedAt);
+    }
+
+    function limitText(perSecond, burst) {
+      return current === "fa"
+        ? num(perSecond) + " در ثانیه، انباشت " + num(burst)
+        : num(perSecond) + "/s, burst " + num(burst);
+    }
+
+    function limitsFor(path) {
+      const ctx = latestSnapshot && latestSnapshot.context;
+      if (!ctx) return "";
+      if (String(path).includes("orders")) return limitText(ctx.ordersReplenishPerSecond, ctx.ordersBurst);
+      return limitText(ctx.customersReplenishPerSecond, ctx.customersBurst);
+    }
+
+    function labelFor(service) {
+      const text = t();
+      if (service.id === "gateway") return text.svcGateway;
+      if (service.id === "orders") return text.svcOrders;
+      if (service.id === "customers") return text.svcCustomers;
+      return "Redis";
+    }
+
+    function detailFor(service) {
+      const text = t();
+      if (service.state === "UP" && service.id === "gateway") return text.gatewayUp;
+      if (service.state === "UP" && service.id === "redis") {
+        const pong = String(service.detail || "").replace(/^پاسخ\s+/, "").trim();
+        return current === "fa" ? "پاسخ " + (pong || "PONG") : "Replied " + (pong || "PONG");
+      }
+      if (service.state === "UP") {
+        const code = (String(service.detail || "").match(/^(\d+)/) || [])[1];
+        const shown = code ? num(Number(code)) : "";
+        return current === "fa" ? shown + " از سرویس پشتیبان" : shown + " from the backend";
+      }
+      return service.detail || text.noDetail;
+    }
+
+    function renderStatus() {
+      const text = t();
+      const services = latestSnapshot ? latestSnapshot.services : [
+        { id: "gateway", state: "WAIT" }, { id: "redis", state: "WAIT" },
+        { id: "orders", state: "WAIT" }, { id: "customers", state: "WAIT" }
+      ];
+      statusRoot.innerHTML = services.map((service) => {
+        const up = service.state === "UP";
+        const down = service.state === "DOWN";
+        const stateClass = up ? "up" : (down ? "down" : "wait");
+        const stateWord = up ? text.up : (down ? text.down : text.checking);
+        const detail = service.state === "WAIT" ? text.pending : detailFor(service);
+        const latencyValue = num(Number(service.latencyMs) || 0);
+        const latency = service.state === "WAIT" ? "" : `<div class="latency">${escapeHtml(latencyValue)} ${escapeHtml(text.ms)}</div>`;
+        return `<article class="card ${up ? "up" : (down ? "down" : "")}">
+          <div class="label">${escapeHtml(labelFor(service))}</div>
+          <div class="state ${stateClass}">${escapeHtml(stateWord)}</div>
+          <div class="detail" dir="auto">${escapeHtml(detail)}</div>
+          ${latency}
+        </article>`;
+      }).join("");
+    }
+
+    function renderFlow() {
+      const text = t();
+      const ctx = latestSnapshot && latestSnapshot.context;
+      const header = ctx ? ctx.correlationHeader : "X-Correlation-ID";
+      const ordersRate = ctx ? num(ctx.ordersReplenishPerSecond) : "…";
+      const customersRate = ctx ? num(ctx.customersReplenishPerSecond) : "…";
+      const windowSize = ctx ? num(ctx.circuitWindow) : "…";
+      const failure = ctx ? num(ctx.circuitFailurePercent) : "…";
+      const openWait = ctx ? ctx.circuitOpenWait : "…";
+      const audienceHtml = ctx && ctx.audience ? ltr(ctx.audience) : escapeHtml(text.audienceOff);
+      const clientDetail = current === "fa"
+        ? `${ltr("GET")} و هدر ${ltr(header)}`
+        : `${ltr("GET")} with header ${ltr(header)}`;
+      const jwtDetail = current === "fa"
+        ? `صادرکننده بررسی می‌شود. مخاطب: ${audienceHtml}`
+        : `Issuer is checked. Audience: ${audienceHtml}`;
+      const limitDetail = current === "fa"
+        ? `سفارش ${ordersRate} و مشتری ${customersRate} در ثانیه، به ازای کاربر`
+        : `Orders ${ltr(ordersRate + "/s")}, customers ${ltr(customersRate + "/s")}, per caller`;
+      const breakerDetail = current === "fa"
+        ? `پنجره ${windowSize}، آستانه ${failure}٪، انتظار ${ltr(openWait)}`
+        : `Window ${windowSize}, threshold ${failure}%, wait ${ltr(openWait)}`;
+      const backendDetail = current === "fa"
+        ? `پیشوند ${ltr("/api")} برداشته می‌شود و مسیر اصلی به سرویس می‌رسد.`
+        : `The ${ltr("/api")} prefix is stripped and the remaining path reaches the service.`;
+      const steps = [
+        [text.stepClient, clientDetail],
+        [text.stepJwt, jwtDetail],
+        [text.stepLimit, limitDetail],
+        [text.stepBreaker, breakerDetail],
+        [text.stepBackend, backendDetail]
+      ];
+      pipeline.innerHTML = steps.map((step, index) => `<article class="pipe">
+        <div class="step">${ltr(String(index + 1).padStart(2, "0"))}</div>
+        <strong>${escapeHtml(step[0])}</strong>
+        <span>${step[1]}</span>
+      </article>`).join("");
+    }
+
+    function renderRoutes() {
+      const routes = latestSnapshot ? latestSnapshot.routes : [];
+      routesBody.innerHTML = routes.map((route) => `<tr>
+        <td><span class="method ltr">${escapeHtml(route.method)}</span></td>
+        <td>${ltr(route.path)}</td>
+        <td>${ltr(route.scope)}</td>
+        <td>${escapeHtml(limitsFor(route.path) || route.limit)}</td>
+        <td>${ltr(route.backend)}</td>
+      </tr>`).join("");
+    }
+
+    function renderFacts() {
+      const text = t();
+      const ctx = latestSnapshot && latestSnapshot.context;
+      if (!ctx) {
+        facts.innerHTML = "";
+        return;
+      }
+      const correlation = current === "fa"
+        ? "حرف، عدد، نقطه، خط و زیرخط، تا ۱۲۸ نویسه. مقدار ناامن با شناسهٔ تازه عوض می‌شود."
+        : "Letters, digits, dot, hyphen, and underscore, up to 128 characters. An unsafe value is replaced.";
+      const breaker = current === "fa"
+        ? "پنجرهٔ " + num(ctx.circuitWindow) + " فراخوانی، آستانهٔ خطای " + num(ctx.circuitFailurePercent) + " درصد، ماندن در حالت باز " + ctx.circuitOpenWait + "."
+        : "Window of " + num(ctx.circuitWindow) + " calls, failure threshold " + num(ctx.circuitFailurePercent) + " percent, open for " + ctx.circuitOpenWait + ".";
+      const rows = [
+        [text.factApp, ltr(ctx.application)],
+        [text.factIssuer, ltr(ctx.issuer)],
+        [text.factAudience, ctx.audience ? ltr(ctx.audience) : escapeHtml(text.audienceOff)],
+        [text.factLocal, escapeHtml(ctx.localTokensEnabled ? text.localOn : text.localOff)],
+        [text.factId, ltr(ctx.correlationHeader) + " — " + escapeHtml(correlation)],
+        [text.factBreaker, escapeHtml(breaker)]
+      ];
+      facts.innerHTML = rows.map((row) => `<dt>${escapeHtml(row[0])}</dt><dd>${row[1]}</dd>`).join("");
+    }
+
+    function serviceName(id) {
+      if (id === "orders") return t().svcOrders;
+      if (id === "customers") return t().svcCustomers;
+      if (id === "gateway") return t().svcGateway;
+      return "Redis";
+    }
+
+    function formatWhen(iso) {
+      if (!iso) return t().unseen;
+      const date = new Date(iso);
+      if (Number.isNaN(date.getTime())) return iso;
+      return new Intl.DateTimeFormat(locale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(date);
+    }
+
+    function circuitLabel(state) {
+      return t()["circuit" + (state || "UNKNOWN")] || t().circuitUNKNOWN;
+    }
+
+    function stat(label, value) {
+      return `<div class="stat"><span>${escapeHtml(label)}</span><b>${escapeHtml(num(value))}</b></div>`;
+    }
+
+    function renderControls() {
+      const active = document.activeElement;
+      if (active && active.closest && active.closest("#controls") && active.tagName === "INPUT") return;
+      const text = t();
+      const operations = latestSnapshot && latestSnapshot.operations ? latestSnapshot.operations : [];
+      const root = document.querySelector("#controls");
+      root.innerHTML = operations.map((op) => {
+        const connWord = op.connectivity === "UP" ? text.connected : (op.connectivity === "DOWN" ? text.disconnected : text.unseen);
+        const since = op.since ? " · " + text.since + " " + formatWhen(op.since) : "";
+        return `<article class="panel control">
+          <header>
+            <h3>${escapeHtml(serviceName(op.id))}</h3>
+            <button class="switch ${op.enabled ? "on" : "off"}" type="button" data-toggle="${escapeHtml(op.id)}">${escapeHtml(op.enabled ? text.enable : text.disable)}</button>
+          </header>
+          <p class="conn ${escapeHtml(op.connectivity)}">${escapeHtml(connWord + since)} · ${escapeHtml(text.transitions)} ${escapeHtml(num(op.transitions))}</p>
+          <p class="conn">${escapeHtml(text.circuit)}: ${escapeHtml(circuitLabel(op.circuit))}</p>
+          <div class="stats">
+            ${stat(text.calls, op.calls)}
+            ${stat(text.succeeded, op.succeeded)}
+            ${stat(text.limited, op.limited)}
+            ${stat(text.rejected, op.rejected)}
+            ${stat(text.failed, op.failed)}
+          </div>
+          <form class="rate-form" data-rate="${escapeHtml(op.id)}">
+            <label>${escapeHtml(text.perSecond)}<input name="replenish" type="number" min="1" max="1000" dir="ltr" value="${Number(op.replenishPerSecond)}"></label>
+            <label>${escapeHtml(text.burst)}<input name="burst" type="number" min="1" max="5000" dir="ltr" value="${Number(op.burst)}"></label>
+            <button type="submit">${escapeHtml(text.saveLimit)}</button>
+          </form>
+          <p class="form-note" id="note-${escapeHtml(op.id)}"></p>
+        </article>`;
+      }).join("");
+    }
+
+    function renderActivity() {
+      const text = t();
+      const events = latestSnapshot && latestSnapshot.activity ? latestSnapshot.activity : [];
+      const root = document.querySelector("#activity");
+      if (!events.length) {
+        root.innerHTML = `<li>${escapeHtml(text.activityEmpty)}</li>`;
+        return;
+      }
+      root.innerHTML = events.map((event) => `<li>
+        <span><b class="kind ${escapeHtml(event.kind)}">${escapeHtml(text["kind" + event.kind] || event.kind)}</b> ${escapeHtml(serviceName(event.serviceId))}${event.detail ? " · " + escapeHtml(event.detail) : ""}</span>
+        <time dir="ltr">${escapeHtml(formatWhen(event.at))}</time>
+      </li>`).join("");
+    }
+
+    async function updateRoute(id, body) {
+      const response = await fetch("/api/console/routes/" + encodeURIComponent(id), {
+        method: "POST",
+        headers: { "Accept": "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const key = payload.error === "burst_below_rate" ? "burstBelow"
+          : (payload.error === "rate_out_of_range" ? "rateRange"
+            : (payload.error === "unknown_service" ? "unknownService" : "saveFail"));
+        return t()[key];
+      }
+      await refresh();
+      const note = document.querySelector("#note-" + id);
+      if (note) note.textContent = body.enabled === undefined ? t().saved : "";
+      return "";
+    }
+
+    function paintFooter(checkedAt) {
+      const when = new Intl.DateTimeFormat(locale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(checkedAt));
+      checked.textContent = current === "fa"
+        ? "آخرین بررسی وضعیت: " + when + " · هر " + num(5) + " ثانیه تازه می‌شود"
+        : "Last check: " + when + " · refreshes every 5 seconds";
+    }
+
+    function tick() {
+      clock.textContent = new Intl.DateTimeFormat(locale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date());
+    }
+
+    async function refresh() {
+      const button = document.querySelector("#refresh");
+      button.disabled = true;
+      try {
+        const response = await fetch("/api/console/status", { headers: { "Accept": "application/json" } });
+        if (!response.ok) throw new Error(String(response.status));
+        latestSnapshot = await response.json();
+        const ctx = latestSnapshot.context;
+        mode.textContent = ctx.localTokensEnabled ? t().modeLocal : t().modeWso2;
+        mode.className = "pill " + (ctx.localTokensEnabled ? "ok" : "warn");
+        renderStatus();
+        renderFlow();
+        renderRoutes();
+        renderFacts();
+        renderControls();
+        renderActivity();
+        paintFooter(latestSnapshot.checkedAt);
+      } catch (error) {
+        checked.textContent = t().footerFail;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    function selectedScopes() {
+      return [...document.querySelectorAll("input[name='scope']:checked")].map((input) => input.value);
+    }
+
+    function requiredScope() {
+      return serviceSelect.value === "orders" ? "orders.read" : "customers.read";
+    }
+
+    function resourcePath() {
+      const id = idInput.value.trim();
+      return serviceSelect.value === "orders"
+        ? `/api/orders/${encodeURIComponent(id)}`
+        : `/api/customers/${encodeURIComponent(id)}`;
+    }
+
+    function validId(id) {
+      return /^[A-Za-z0-9._-]{1,64}$/.test(id);
+    }
+
+    function paintPreview() {
+      const id = idInput.value.trim();
+      if (!validId(id)) {
+        preview.textContent = t().badId;
+        return;
+      }
+      preview.innerHTML = `${ltr("GET " + resourcePath())} · ${escapeHtml(t().required)}: ${ltr(requiredScope())}`;
+    }
+
+    function decodeClaims(token) {
+      const raw = token.replace(/^bearer\s+/i, "").trim();
+      const part = raw.split(".")[1];
+      if (!part) return null;
+      try {
+        const padded = part.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((part.length + 3) % 4);
+        const bytes = Uint8Array.from(atob(padded), (ch) => ch.charCodeAt(0));
+        return JSON.parse(new TextDecoder().decode(bytes));
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function paintClaims() {
+      const text = t();
+      const raw = tokenInput.value.trim();
+      if (!raw) {
+        claimsEl.hidden = true;
+        claimsEl.innerHTML = "";
+        return;
+      }
+      const claims = decodeClaims(raw);
+      claimsEl.hidden = false;
+      if (!claims) {
+        claimsEl.textContent = text.unreadable;
+        return;
+      }
+      const exp = Number(claims.exp);
+      const remaining = Number.isFinite(exp) ? Math.max(0, exp - Math.floor(Date.now() / 1000)) : null;
+      const scope = claims.scope || "—";
+      const audience = Array.isArray(claims.aud) ? claims.aud.join(", ") : (claims.aud || text.none);
+      const missing = String(scope).split(/\s+/).includes(requiredScope()) ? "" : " " + text.missingScope;
+      const left = remaining === null ? text.unknown : num(remaining) + " " + text.seconds;
+      claimsEl.innerHTML = `<strong>${escapeHtml(text.claimSub)}</strong> ${ltr(claims.sub || "—")}
+        · <strong>${escapeHtml(text.claimScope)}</strong> ${ltr(scope)}
+        · <strong>${escapeHtml(text.claimAud)}</strong> ${ltr(audience)}
+        · <strong>${escapeHtml(text.claimLeft)}</strong> ${escapeHtml(left)}
+        <br><strong>${escapeHtml(text.claimIss)}</strong> ${ltr(claims.iss || "—")}${escapeHtml(missing)}`;
+    }
+
+    function kindFor(status) {
+      if (status === 200) return "ok";
+      if (status === 401 || status === 403 || status === 429) return "expected";
+      return "bad";
+    }
+
+    function paintResult() {
+      if (!lastResult) {
+        meaningEl.textContent = t().emptyResult;
+        return;
+      }
+      const result = lastResult;
+      const kind = typeof result.status === "number" ? kindFor(result.status) : "bad";
+      codeEl.className = "badge " + kind;
+      codeEl.textContent = String(result.status);
+      const known = meanings[current][result.status];
+      let meaning = result.meaningKey ? t()[result.meaningKey] : (known || meanings[current].other);
+      if (result.status === 503 && String(result.text || "").includes("service_disabled")) meaning = t().disabledMeaning;
+      meaningEl.textContent = meaning;
+      if (result.correlation) {
+        const elapsed = result.elapsed === null ? "" : (current === "fa"
+          ? " · " + num(result.elapsed) + " " + t().ms
+          : " · " + result.elapsed + " ms");
+        metaLine.hidden = false;
+        metaLine.innerHTML = (current === "fa" ? "شناسه: " : "Id: ") + ltr(result.correlation) + escapeHtml(elapsed);
+      } else {
+        metaLine.hidden = true;
+        metaLine.innerHTML = "";
+      }
+      if (result.text) {
+        let body = result.text;
+        try { body = JSON.stringify(JSON.parse(body), null, 2); } catch (error) { /* keep raw text */ }
+        bodyEl.hidden = false;
+        bodyEl.textContent = body;
+      } else {
+        bodyEl.hidden = true;
+        bodyEl.textContent = "";
+      }
+      copyBtn.hidden = !result.correlation;
+    }
+
+    function remember(path, status, elapsed) {
+      history.unshift({ path, status, elapsed, at: new Date() });
+      history.splice(5);
+      renderHistory();
+    }
+
+    function renderHistory() {
+      historyEl.innerHTML = history.map((item) => {
+        const when = new Intl.DateTimeFormat(locale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(item.at);
+        const elapsed = current === "fa" ? num(item.elapsed) + " " + t().ms : item.elapsed + " ms";
+        return `<li><span>${ltr(item.path)} · ${escapeHtml(when)}</span><b class="${kindFor(item.status)}">${ltr(item.status)} · ${escapeHtml(elapsed)}</b></li>`;
+      }).join("");
+    }
+
+    function showLocal(status, meaningKey) {
+      lastResult = { status, correlation: "", elapsed: null, text: "", meaningKey };
+      lastCorrelation = "";
+      copyDone = false;
+      paintResult();
+    }
+
+    function setBusy(busy) {
+      sendBtn.disabled = busy;
+      demoBtn.disabled = busy;
+      document.querySelector("#result").setAttribute("aria-busy", String(busy));
+    }
+
+    async function sendRequest() {
+      const id = idInput.value.trim();
+      if (!validId(id)) {
+        showLocal("—", "fixId");
+        return;
+      }
+      const token = tokenInput.value.trim();
+      const correlation = "console-" + Date.now();
+      const headers = { "Accept": "application/json", "X-Correlation-ID": correlation };
+      if (token) headers.Authorization = token.toLowerCase().startsWith("bearer ") ? token : "Bearer " + token;
+      const path = resourcePath();
+      setBusy(true);
+      const started = performance.now();
+      try {
+        const response = await fetch(path, { headers });
+        const text = await response.text();
+        const echoed = response.headers.get("X-Correlation-ID") || correlation;
+        const elapsed = Math.round(performance.now() - started);
+        lastResult = { status: response.status, correlation: echoed, elapsed, text, meaningKey: "" };
+        lastCorrelation = echoed;
+        copyDone = false;
+        paintResult();
+        remember(path, response.status, elapsed);
+      } catch (error) {
+        showLocal(current === "fa" ? "خطا" : "Error", "network");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    document.querySelector("#lab").addEventListener("submit", (event) => {
+      event.preventDefault();
+      sendRequest();
+    });
+
+    demoBtn.addEventListener("click", async () => {
+      const scopes = selectedScopes();
+      if (scopes.length === 0) {
+        showLocal("—", "pickScope");
+        return;
+      }
+      setBusy(true);
+      try {
+        const response = await fetch("/api/console/token?scope=" + encodeURIComponent(scopes.join(" ")), {
+          headers: { "Accept": "application/json" }
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          showLocal(response.status, response.status === 404 ? "tokenOff" : "tokenFail");
+          if (payload.error && response.status !== 404) meaningEl.textContent = payload.error;
+          return;
+        }
+        tokenInput.value = payload.access_token;
+        paintClaims();
+        setBusy(false);
+        await sendRequest();
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    revealBtn.addEventListener("click", () => {
+      const hidden = tokenInput.type === "password";
+      tokenInput.type = hidden ? "text" : "password";
+      revealBtn.textContent = hidden ? t().hide : t().reveal;
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      if (!lastCorrelation) return;
+      await navigator.clipboard.writeText(lastCorrelation);
+      copyDone = true;
+      copyBtn.textContent = t().copied;
+      setTimeout(() => {
+        copyDone = false;
+        copyBtn.textContent = t().copy;
+      }, 1200);
+    });
+
+    document.querySelector("#refresh").addEventListener("click", refresh);
+    document.querySelectorAll(".lang button").forEach((button) => {
+      button.addEventListener("click", () => setLang(button.dataset.lang));
+    });
+    document.querySelector("#controls").addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-toggle]");
+      if (!button || !latestSnapshot) return;
+      const op = (latestSnapshot.operations || []).find((item) => item.id === button.dataset.toggle);
+      if (!op) return;
+      button.disabled = true;
+      try {
+        const message = await updateRoute(op.id, { enabled: !op.enabled });
+        const note = document.querySelector("#note-" + op.id);
+        if (message && note) note.textContent = message;
+      } finally {
+        const fresh = document.querySelector(`[data-toggle="${op.id}"]`);
+        if (fresh) fresh.disabled = false;
+      }
+    });
+
+    document.querySelector("#controls").addEventListener("submit", async (event) => {
+      const form = event.target.closest("form[data-rate]");
+      if (!form) return;
+      event.preventDefault();
+      const replenish = Number(form.replenish.value);
+      const burst = Number(form.burst.value);
+      const note = document.querySelector("#note-" + form.dataset.rate);
+      if (!Number.isInteger(replenish) || replenish < 1 || replenish > 1000 || !Number.isInteger(burst) || burst < 1 || burst > 5000) {
+        note.textContent = t().rateRange;
+        return;
+      }
+      if (burst < replenish) {
+        note.textContent = t().burstBelow;
+        return;
+      }
+      const button = form.querySelector("button");
+      button.disabled = true;
+      try {
+        const message = await updateRoute(form.dataset.rate, { replenishPerSecond: replenish, burst });
+        const fresh = document.querySelector("#note-" + form.dataset.rate);
+        if (message && fresh) fresh.textContent = message;
+      } finally {
+        const freshButton = document.querySelector(`form[data-rate="${form.dataset.rate}"] button`);
+        if (freshButton) freshButton.disabled = false;
+      }
+    });
+
+    serviceSelect.addEventListener("change", () => { paintPreview(); paintClaims(); });
+    idInput.addEventListener("input", paintPreview);
+    tokenInput.addEventListener("input", paintClaims);
+
+    setLang(current);
+    tick();
+    setInterval(tick, 1000);
+    refresh();
+    setInterval(refresh, 5000);
+  </script>
+</body>
+</html>

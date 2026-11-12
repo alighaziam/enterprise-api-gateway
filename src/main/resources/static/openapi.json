@@ -1,0 +1,152 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Enterprise API Gateway",
+    "version": "0.1.0",
+    "description": "دروازهٔ سفارش‌ها و مشتریان. دسترسی با JWT و اسکوپ‌های orders.read و customers.read."
+  },
+  "servers": [
+    { "url": "/" }
+  ],
+  "tags": [
+    { "name": "orders", "description": "سفارش‌ها" },
+    { "name": "customers", "description": "مشتریان" },
+    { "name": "operations", "description": "سلامت و کنسول" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/orders/{orderId}": {
+      "get": {
+        "tags": ["orders"],
+        "summary": "خواندن یک سفارش",
+        "operationId": "getOrder",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "123"
+          }
+        ],
+        "responses": {
+          "200": { "description": "سفارش از سرویس پشتیبان" },
+          "401": { "description": "توکن نیست یا نامعتبر است" },
+          "403": { "description": "اسکوپ orders.read وجود ندارد" },
+          "429": { "description": "سقف درخواست رد شده است" },
+          "503": { "description": "سرویس پایین‌دستی در دسترس نیست" }
+        }
+      }
+    },
+    "/api/customers/{customerId}": {
+      "get": {
+        "tags": ["customers"],
+        "summary": "خواندن یک مشتری",
+        "operationId": "getCustomer",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "123"
+          }
+        ],
+        "responses": {
+          "200": { "description": "مشتری از سرویس پشتیبان" },
+          "401": { "description": "توکن نیست یا نامعتبر است" },
+          "403": { "description": "اسکوپ customers.read وجود ندارد" },
+          "429": { "description": "سقف درخواست رد شده است" },
+          "503": { "description": "سرویس پایین‌دستی در دسترس نیست" }
+        }
+      }
+    },
+    "/api/console/status": {
+      "get": {
+        "tags": ["operations"],
+        "summary": "وضعیت دروازه، Redis و سرویس‌های پشتیبان",
+        "operationId": "consoleStatus",
+        "responses": {
+          "200": {
+            "description": "وضعیت وابستگی‌ها، مسیرها و زمینهٔ اجرایی: صادرکننده، مخاطب، سقف، مدارشکن و فعال بودن توکن محلی."
+          }
+        }
+      }
+    },
+    "/actuator/health": {
+      "get": {
+        "tags": ["operations"],
+        "summary": "سلامت دروازه",
+        "operationId": "health",
+        "responses": {
+          "200": { "description": "وضعیت UP" }
+        }
+      }
+    },
+    "/api/console/token": {
+      "get": {
+        "tags": ["operations"],
+        "summary": "توکن آزمایشی محلی",
+        "description": "فقط وقتی LOCAL_DEV_TOKENS فعال باشد. در غیر این صورت ۴۰۴ برمی‌گردد.",
+        "operationId": "localDevToken",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "schema": { "type": "string", "example": "orders.read customers.read" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "توکن امضاشده برای آزمایش محلی" },
+          "400": { "description": "اسکوپ پشتیبانی نمی‌شود" },
+          "404": { "description": "صدور توکن محلی خاموش است" }
+        }
+      }
+    },
+    "/api/console/routes/{serviceId}": {
+      "post": {
+        "tags": ["operations"],
+        "summary": "فعال‌سازی، خاموش‌کردن یا تنظیم سقف یک سرویس",
+        "operationId": "updateRouteControl",
+        "parameters": [
+          {
+            "name": "serviceId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "enum": ["orders", "customers"] }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": { "type": "boolean" },
+                  "replenishPerSecond": { "type": "integer", "minimum": 1, "maximum": 1000 },
+                  "burst": { "type": "integer", "minimum": 1, "maximum": 5000 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "وضعیت تازهٔ سرویس، شامل تعداد فراخوانی و سقف" },
+          "400": { "description": "سقف نامعتبر است یا انباشت از نرخ پرشدن کمتر است" },
+          "404": { "description": "این سرویس قابل کنترل نیست" }
+        }
+      }
+    }
+  }
+}

@@ -78,7 +78,9 @@ Requirements: JDK 21, Maven 3.9+, and Docker Compose v2.
    docker compose up --build
    ```
 
-The gateway listens on http://localhost:8080. The WireMock backends are exposed on ports 8081 (Orders) and 8082 (Customers). The local backends are examples only; WSO2 remains an external dependency.
+The gateway listens on http://localhost:8080. The WireMock backends are exposed on ports 8081 (Orders) and 8082 (Customers). The local backends are examples only; WSO2 remains an external dependency. If port 8080 is already taken, start the jar with `--server.port=8090` and use that port in every URL below.
+
+Local console and Swagger are served by the gateway at `/` and `/swagger-ui.html`. Set `LOCAL_DEV_TOKENS=true` together with `WSO2_ISSUER_URI=http://local-gateway` and `WSO2_JWKS_URI` pointed at the gateway itself (`http://127.0.0.1:8080/jwks`, or `http://127.0.0.1:8090/jwks` when the gateway is on 8090) when you want the console to mint a short-lived read token. Leave that flag unset when the gateway must accept only WSO2 tokens.
 
 ## API routes and authorization
 
