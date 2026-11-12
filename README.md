@@ -20,7 +20,7 @@ A reactive, security-first API Gateway built with Java 21, Spring Boot 3.5, and 
 | Component | Version |
 |---|---|
 | Java | 21 |
-| Spring Boot | 3.5.13 |
+| Spring Boot | 3.5.5 |
 | Spring Cloud | 2025.0.0 |
 | Spring Cloud Gateway | 4.3.0 (managed by Spring Cloud BOM) |
 | WSO2 Identity Server | 7.3 (external identity provider) |
