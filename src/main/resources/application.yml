@@ -60,6 +60,9 @@ security:
     jwk-set-uri: ${WSO2_JWKS_URI:https://localhost:9443/oauth2/jwks}
     audience: ${WSO2_REQUIRED_AUDIENCE:}
 
+local-dev:
+  tokens-enabled: ${LOCAL_DEV_TOKENS:false}
+
 management:
   endpoints:
     web:
