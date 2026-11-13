@@ -39,11 +39,42 @@ class RouteGovernanceTest {
     }
 
     @Test
+    void attributesEachCallerAndSeparatesConsumerFromProvider() {
+        RouteGovernance governance = governance();
+
+        governance.record("orders", 200, false, "alice");
+        governance.record("orders", 200, false, "alice");
+        governance.record("orders", 403, false, "alice");
+        governance.record("customers", 502, false, "bob");
+        governance.observe("customers", false, "connection refused");
+
+        assertThat(governance.callers())
+                .filteredOn(usage -> "alice".equals(usage.caller()) && "orders".equals(usage.serviceId()))
+                .singleElement()
+                .satisfies(usage -> {
+                    assertThat(usage.succeeded()).isEqualTo(2);
+                    assertThat(usage.consumerFailures()).isEqualTo(1);
+                    assertThat(usage.providerFailures()).isZero();
+                });
+        assertThat(governance.callers())
+                .filteredOn(usage -> "bob".equals(usage.caller()))
+                .singleElement()
+                .satisfies(usage -> {
+                    assertThat(usage.serviceId()).isEqualTo("customers");
+                    assertThat(usage.providerFailures()).isEqualTo(1);
+                });
+        assertThat(governance.calls()).extracting(RouteGovernance.CallEvent::side)
+                .containsExactly("PROVIDER", "CONSUMER", "SUCCESS", "SUCCESS");
+        assertThat(governance.operations().get(0).outage()).isEqualTo("NONE");
+        assertThat(governance.operations().get(1).outage()).isEqualTo("PROVIDER");
+    }
+
+    @Test
     void updatesRateLimitAndEnablement() {
         List<String> applied = new ArrayList<>();
         RouteGovernance governance = new RouteGovernance(
                 (routeId, replenish, burst) -> applied.add(routeId + ":" + replenish + ":" + burst),
-                emptyBreakers(), 20, 40, 30, 60);
+                emptyBreakers(), 20, 40, 30, 60, "http://localhost:8081", "http://localhost:8082");
 
         RouteGovernance.ServiceOperations updated = governance.update("orders", false, 5, 9);
 
@@ -54,6 +85,28 @@ class RouteGovernanceTest {
         assertThat(governance.activity()).extracting(RouteGovernance.ActivityEvent::kind)
                 .contains("DISABLED");
         assertThat(governance.isEnabled("orders")).isFalse();
+    }
+
+    @Test
+    void createsAndDeletesACustomServiceButKeepsSystemServices() {
+        RouteGovernance governance = governance();
+
+        RouteGovernance.ServiceOperations created = governance.create(
+                "billing", "http://127.0.0.1:8081", "orders.read", 5, 8, true);
+
+        assertThat(created.system()).isFalse();
+        assertThat(created.backend()).isEqualTo("http://127.0.0.1:8081");
+        assertThat(governance.resolve("/api/billing/77")).isEqualTo("billing");
+        assertThat(governance.operations()).extracting(RouteGovernance.ServiceOperations::id)
+                .contains("orders", "customers", "billing");
+
+        governance.delete("billing");
+        assertThat(governance.resolve("/api/billing/77")).isNull();
+        assertThatThrownBy(() -> governance.delete("orders")).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("system_service");
+        assertThatThrownBy(() -> governance.create("orders", "http://127.0.0.1:9", "orders.read", 1, 1, true))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("reserved_id");
     }
 
     @Test
@@ -69,7 +122,8 @@ class RouteGovernanceTest {
     }
 
     private static RouteGovernance governance() {
-        return new RouteGovernance((routeId, replenish, burst) -> { }, emptyBreakers(), 20, 40, 30, 60);
+        return new RouteGovernance((routeId, replenish, burst) -> { }, emptyBreakers(), 20, 40, 30, 60,
+                "http://localhost:8081", "http://localhost:8082");
     }
 
     @SuppressWarnings("unchecked")

@@ -19,7 +19,6 @@ class ConsoleControllerTest {
     @Test
     void exposesOperationalSnapshot() {
         ConsoleStatusService service = mock(ConsoleStatusService.class);
-        com.alighazi.gateway.ops.RouteGovernance governance = mock(com.alighazi.gateway.ops.RouteGovernance.class);
         when(service.snapshot()).thenReturn(Mono.just(new ConsoleSnapshot(
                 "2026-11-12T18:00:00Z",
                 List.of(ServiceProbe.up("gateway", "دروازه", "فعال", 0)),
@@ -28,9 +27,11 @@ class ConsoleControllerTest {
                         "enterprise-api-gateway", "http://gateway-test", "gateway-api", false,
                         "X-Correlation-ID", 20, 40, 30, 60, 20, 50, "10s"),
                 List.of(),
+                List.of(),
+                List.of(),
                 List.of())));
 
-        WebTestClient.bindToController(new ConsoleController(service, governance))
+        WebTestClient.bindToController(new ConsoleController(service, mock(com.alighazi.gateway.ops.RouteCatalog.class)))
                 .build()
                 .get()
                 .uri("/api/console/status")

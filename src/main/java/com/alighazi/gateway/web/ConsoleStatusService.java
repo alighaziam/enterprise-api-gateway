@@ -2,6 +2,7 @@ package com.alighazi.gateway.web;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -58,23 +59,40 @@ public class ConsoleStatusService {
     }
 
     public Mono<ConsoleSnapshot> snapshot() {
-        return Mono.zip(gateway(), probeRedis(), probeOrders(), probeCustomers())
-                .map(probes -> {
-                    List<ServiceProbe> services = List.of(probes.getT1(), probes.getT2(), probes.getT3(), probes.getT4());
-                    services.forEach(probe -> governance.observe(probe.id(), "UP".equals(probe.state()), probe.detail()));
-                    OperatingContext context = liveContext();
-                    return new ConsoleSnapshot(
-                            Instant.now().toString(),
-                            services,
-                            List.of(
-                                    new RouteInfo("GET", "/api/orders/**", "orders.read",
-                                            limitLabel(context.ordersReplenishPerSecond(), context.ordersBurst()), ordersUri),
-                                    new RouteInfo("GET", "/api/customers/**", "customers.read",
-                                            limitLabel(context.customersReplenishPerSecond(), context.customersBurst()), customersUri)),
-                            context,
-                            governance.operations(),
-                            governance.activity());
-                });
+        List<com.alighazi.gateway.ops.RouteGovernance.ServiceOperations> custom = governance.operations().stream()
+                .filter(operation -> !operation.system())
+                .toList();
+        List<Mono<ServiceProbe>> probes = new ArrayList<>();
+        probes.add(gateway());
+        probes.add(probeRedis());
+        probes.add(probeOrders());
+        probes.add(probeCustomers());
+        custom.forEach(operation -> probes.add(probeReachable(operation.id(), operation.id(), operation.backend())));
+        return Mono.zip(probes, results -> {
+            List<ServiceProbe> services = new ArrayList<>();
+            for (Object result : results) {
+                services.add((ServiceProbe) result);
+            }
+            services.forEach(probe -> governance.observe(probe.id(), "UP".equals(probe.state()), probe.detail()));
+            OperatingContext context = liveContext();
+            List<RouteInfo> routes = new ArrayList<>();
+            routes.add(new RouteInfo("GET", "/api/orders/**", "orders.read",
+                    limitLabel(context.ordersReplenishPerSecond(), context.ordersBurst()), ordersUri));
+            routes.add(new RouteInfo("GET", "/api/customers/**", "customers.read",
+                    limitLabel(context.customersReplenishPerSecond(), context.customersBurst()), customersUri));
+            governance.operations().stream().filter(operation -> !operation.system()).forEach(operation -> routes.add(
+                    new RouteInfo("GET", "/api/" + operation.id() + "/**", operation.scope(),
+                            limitLabel(operation.replenishPerSecond(), operation.burst()), operation.backend())));
+            return new ConsoleSnapshot(
+                    Instant.now().toString(),
+                    List.copyOf(services),
+                    List.copyOf(routes),
+                    context,
+                    governance.operations(),
+                    governance.activity(),
+                    governance.callers(),
+                    governance.calls());
+        });
     }
 
     private OperatingContext liveContext() {
@@ -111,6 +129,16 @@ public class ConsoleStatusService {
 
     private Mono<ServiceProbe> probeCustomers() {
         return probeHttp("customers", "مشتریان", customersUri + "/customers/console");
+    }
+
+    private Mono<ServiceProbe> probeReachable(String id, String label, String url) {
+        long started = System.nanoTime();
+        return webClient.get()
+                .uri(url)
+                .exchangeToMono(response -> Mono.just(
+                        ServiceProbe.up(id, label, response.statusCode().value() + " از سرویس پشتیبان", elapsedMs(started))))
+                .timeout(Duration.ofSeconds(2))
+                .onErrorResume(ex -> Mono.just(ServiceProbe.down(id, label, describe(ex), elapsedMs(started))));
     }
 
     private Mono<ServiceProbe> probeHttp(String id, String label, String url) {
@@ -163,7 +191,9 @@ public class ConsoleStatusService {
             List<RouteInfo> routes,
             OperatingContext context,
             List<com.alighazi.gateway.ops.RouteGovernance.ServiceOperations> operations,
-            List<com.alighazi.gateway.ops.RouteGovernance.ActivityEvent> activity) {
+            List<com.alighazi.gateway.ops.RouteGovernance.ActivityEvent> activity,
+            List<com.alighazi.gateway.ops.RouteGovernance.CallerUsage> callers,
+            List<com.alighazi.gateway.ops.RouteGovernance.CallEvent> calls) {
     }
 
     public record OperatingContext(

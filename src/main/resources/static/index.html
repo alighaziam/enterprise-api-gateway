@@ -178,7 +178,50 @@
     .history b.expected { color: var(--brass); }
     .history b.bad { color: var(--down); }
     footer { color: var(--muted); font-size: 12px; padding-bottom: 28px; }
-    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+    .directory { margin-top: 14px; padding: 18px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; align-items: end; }
+    .toolbar label { display: grid; gap: 4px; min-width: min(240px, 100%); color: var(--muted); font-size: 12px; }
+    .toolbar input, .toolbar select { padding: 10px 12px; }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .row-actions button, .pager button, dialog button { border-radius: 999px; font-size: 12px; font-weight: 650; cursor: pointer; }
+    .pager { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; }
+    .muted-row { opacity: 0.72; }
+    dialog {
+      width: min(480px, calc(100% - 32px)); padding: 18px; color: inherit;
+      background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+    }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+    .dialog-grid { display: grid; gap: 10px; margin-top: 12px; }
+    .dialog-grid label { display: grid; gap: 4px; color: var(--muted); font-size: 12px; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .insight { margin-top: 14px; padding: 18px; }
+    .chart-grid, .fault-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    .chart, .fault { border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: #10160f; }
+    .bars { display: flex; align-items: flex-end; gap: 14px; height: 108px; margin-top: 10px; }
+    .bars div { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px; height: 100%; }
+    .bars i { display: block; width: 100%; max-width: 42px; border-radius: 8px 8px 2px 2px; }
+    .bars i.success { background: var(--up); }
+    .bars i.consumer { background: var(--brass); }
+    .bars i.provider { background: var(--down); }
+    .bars i.zero { background: #243024; }
+    .bars span, .legend { color: var(--muted); font-size: 11px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 0; }
+    .legend b { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-inline-end: 4px; }
+    .legend b.success { background: var(--up); }
+    .legend b.consumer { background: var(--brass); }
+    .legend b.provider { background: var(--down); }
+    .strip { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+    .strip i { width: 14px; height: 14px; border-radius: 4px; background: #243024; }
+    .strip i.SUCCESS { background: var(--up); }
+    .strip i.CONSUMER, .strip i.LIMITED { background: var(--brass); }
+    .strip i.PROVIDER { background: var(--down); }
+    .strip i.OPERATOR { background: var(--muted); }
+    .fault { border-inline-start-width: 3px; }
+    .fault.NONE { border-inline-start-color: var(--up); }
+    .fault.PROVIDER { border-inline-start-color: var(--down); }
+    .fault.CONSUMER { border-inline-start-color: var(--brass); }
+    .fault.OPERATOR { border-inline-start-color: var(--muted); }
+    .fault p { margin: 8px 0 0; }
     .control header, .activity-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
     .control h3, .activity-head h2 { margin: 0; font-size: 20px; }
     .switch { border-radius: 999px; font-weight: 700; cursor: pointer; }
@@ -237,14 +280,142 @@
 
     <section class="grid" id="status" aria-live="polite"></section>
     <section class="pipeline" id="pipeline" data-i18n-aria="flow" aria-label="مسیر درخواست"></section>
-    <section class="controls" id="controls" data-i18n-aria="controls" aria-label="کنترل سرویس‌ها"></section>
+    <section class="panel insight" id="insight">
+      <div class="activity-head">
+        <h2 data-i18n="insightTitle">اتصال و فراخوانی</h2>
+      </div>
+      <p class="hint" data-i18n="insightHint">نمودارها هر چند ثانیه با شمارندهٔ واقعی دروازه تازه می‌شوند. سبز موفق است، طلایی رد شدن مصرف‌کننده، و قرمز خطای سرویس پشتیبان.</p>
+      <div class="legend">
+        <span><b class="success"></b><span data-i18n="successCalls">موفق</span></span>
+        <span><b class="consumer"></b><span data-i18n="consumerFail">ناموفق مصرف‌کننده</span></span>
+        <span><b class="provider"></b><span data-i18n="providerFail">ناموفق پشتیبان</span></span>
+      </div>
+      <div class="chart-grid" id="charts"></div>
+      <h3 data-i18n="faultTitle">کدام سرویس قطع است و از کدام سمت</h3>
+      <div class="fault-grid" id="faults"></div>
+      <h3 data-i18n="recentTitle">آخرین فراخوانی‌ها</h3>
+      <div class="strip" id="call-strip"></div>
+      <ol class="activity" id="recent-calls"></ol>
+      <h3 data-i18n="callerTitle">هر کاربر، هر سرویس</h3>
+      <div class="toolbar">
+        <label>
+          <span data-i18n="search">جستجو</span>
+          <input id="caller-search" type="search" dir="auto" autocomplete="off" data-i18n-placeholder="searchCallers" placeholder="نام کاربر">
+        </label>
+        <label>
+          <span data-i18n="service">سرویس</span>
+          <select id="caller-service"><option value="all">همه سرویس‌ها</option></select>
+        </label>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="colCaller">کاربر</th>
+              <th data-i18n="colService">سرویس</th>
+              <th data-i18n="successCalls">موفق</th>
+              <th data-i18n="consumerFail">ناموفق مصرف‌کننده</th>
+              <th data-i18n="providerFail">ناموفق پشتیبان</th>
+              <th data-i18n="limited">سقف</th>
+              <th data-i18n="colLast">آخرین</th>
+            </tr>
+          </thead>
+          <tbody id="caller-body"></tbody>
+        </table>
+      </div>
+      <div class="pager" id="caller-pager"></div>
+    </section>
+    <section class="panel directory" id="controls" data-i18n-aria="controls" aria-label="کنترل سرویس‌ها">
+      <div class="activity-head">
+        <h2 data-i18n="directoryTitle">فهرست سرویس‌ها</h2>
+        <button type="button" id="create-service" data-i18n="createService">سرویس تازه</button>
+      </div>
+      <div class="toolbar">
+        <label>
+          <span data-i18n="search">جستجو</span>
+          <input id="directory-search" type="search" dir="auto" autocomplete="off" data-i18n-placeholder="searchServices" placeholder="شناسه، آدرس یا اسکوپ">
+        </label>
+        <label>
+          <span data-i18n="filter">فیلتر</span>
+          <select id="directory-filter">
+            <option value="all">همه</option>
+            <option value="enabled">فعال</option>
+            <option value="disabled">غیرفعال</option>
+            <option value="connected">متصل</option>
+            <option value="disconnected">قطع</option>
+          </select>
+        </label>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="colService">سرویس</th>
+              <th data-i18n="colState">وضعیت</th>
+              <th data-i18n="colConn">اتصال</th>
+              <th data-i18n="colCalls">فراخوانی</th>
+              <th data-i18n="colLimit">سقف</th>
+              <th data-i18n="colScope">اسکوپ</th>
+              <th data-i18n="colBackend">پشتیبان</th>
+              <th data-i18n="colActions">عملیات</th>
+            </tr>
+          </thead>
+          <tbody id="directory-body"></tbody>
+        </table>
+      </div>
+      <div class="pager" id="directory-pager"></div>
+    </section>
     <article class="panel activity-panel">
       <div class="activity-head">
         <h2 data-i18n="activityTitle">گزارش قطع و وصل</h2>
       </div>
       <p class="hint" data-i18n="activityHint">هر بار که اتصال یک سرویس عوض شود، یا اپراتور آن را فعال و غیرفعال کند، اینجا می‌ماند.</p>
+      <div class="toolbar">
+        <label>
+          <span data-i18n="search">جستجو</span>
+          <input id="activity-search" type="search" dir="auto" autocomplete="off" data-i18n-placeholder="searchActivity" placeholder="سرویس یا جزئیات">
+        </label>
+        <label>
+          <span data-i18n="filter">فیلتر</span>
+          <select id="activity-filter">
+            <option value="all">همه</option>
+            <option value="UP">وصل شد</option>
+            <option value="DOWN">قطع شد</option>
+            <option value="ENABLED">فعال شد</option>
+            <option value="DISABLED">غیرفعال شد</option>
+          </select>
+        </label>
+        <label>
+          <span data-i18n="service">سرویس</span>
+          <select id="activity-service"><option value="all">همه سرویس‌ها</option></select>
+        </label>
+      </div>
       <ol class="activity" id="activity"></ol>
+      <div class="pager" id="activity-pager"></div>
     </article>
+    <dialog id="service-dialog">
+      <form id="service-form">
+        <h2 id="dialog-title">سرویس تازه</h2>
+        <div class="dialog-grid">
+          <label><span data-i18n="fieldId">شناسه</span><input name="id" required pattern="[a-z][a-z0-9-]{1,30}" dir="ltr" autocomplete="off"></label>
+          <label><span data-i18n="colBackend">پشتیبان</span><input name="backend" required dir="ltr" autocomplete="off"></label>
+          <label><span data-i18n="colScope">اسکوپ</span>
+            <select name="scope">
+              <option value="orders.read">orders.read</option>
+              <option value="customers.read">customers.read</option>
+            </select>
+          </label>
+          <label><span data-i18n="perSecond">در ثانیه</span><input name="replenish" type="number" min="1" max="1000" dir="ltr" required></label>
+          <label><span data-i18n="burst">انباشت</span><input name="burst" type="number" min="1" max="5000" dir="ltr" required></label>
+          <label class="check-line"><input name="enabled" type="checkbox" checked><span data-i18n="enable">فعال</span></label>
+        </div>
+        <p class="form-note" id="dialog-note"></p>
+        <div class="dialog-actions">
+          <button class="ghost" id="dialog-cancel" type="button" data-i18n="cancel">انصراف</button>
+          <button id="dialog-save" type="submit" data-i18n="saveService">ثبت</button>
+        </div>
+      </form>
+    </dialog>
 
     <section class="workspace">
       <article class="panel">
@@ -370,6 +541,8 @@
         activityEmpty: "هنوز تغییری ثبت نشده است.",
         enable: "فعال",
         disable: "غیرفعال",
+        turnOn: "فعال کردن",
+        turnOff: "غیرفعال کردن",
         connected: "متصل",
         disconnected: "قطع",
         unseen: "هنوز بررسی نشده",
@@ -398,7 +571,74 @@
         circuitOPEN: "باز",
         circuitHALF_OPEN: "نیمه‌باز",
         circuitDISABLED: "خاموش",
-        circuitUNKNOWN: "نامشخص"
+        circuitUNKNOWN: "نامشخص",
+        directoryTitle: "فهرست سرویس‌ها",
+        createService: "سرویس تازه",
+        editService: "ویرایش سرویس",
+        search: "جستجو",
+        filter: "فیلتر",
+        searchServices: "شناسه، آدرس یا اسکوپ",
+        searchActivity: "سرویس یا جزئیات",
+        filterAll: "همه",
+        filterEnabled: "فعال",
+        filterDisabled: "غیرفعال",
+        filterConnected: "متصل",
+        filterDisconnected: "قطع",
+        allServices: "همه سرویس‌ها",
+        colService: "سرویس",
+        colState: "وضعیت",
+        colConn: "اتصال",
+        colCalls: "فراخوانی",
+        colActions: "عملیات",
+        system: "سیستمی",
+        custom: "ساخته‌شده",
+        edit: "ویرایش",
+        remove: "حذف",
+        noMatches: "با این جستجو یا فیلتر موردی نیست.",
+        page: "صفحه",
+        prev: "قبلی",
+        next: "بعدی",
+        fieldId: "شناسه",
+        cancel: "انصراف",
+        saveService: "ثبت",
+        systemLocked: "شناسه، آدرس و اسکوپ سرویس سیستمی ثابت است. فعال‌بودن و سقف را می‌توانید عوض کنید.",
+        confirmDelete: "سرویس {id} و مسیر آن حذف شود؟",
+        deleted: "سرویس حذف شد.",
+        created: "سرویس ساخته شد و مسیر آن از دروازه عبور می‌کند.",
+        updated: "تغییر ذخیره شد.",
+        invalidId: "شناسه باید با حرف کوچک شروع شود و فقط حرف، عدد و خط داشته باشد.",
+        reservedId: "این شناسه رزرو شده است.",
+        duplicateService: "این شناسه از قبل وجود دارد.",
+        invalidBackend: "آدرس پشتیبان باید یک نشانی http یا https با میزبان باشد.",
+        invalidScope: "اسکوپ فقط orders.read یا customers.read است.",
+        systemService: "سرویس سیستمی حذف نمی‌شود و آدرسش عوض نمی‌شود.",
+        insightTitle: "اتصال و فراخوانی",
+        insightHint: "نمودارها هر چند ثانیه با شمارندهٔ واقعی دروازه تازه می‌شوند. سبز موفق است، طلایی رد شدن مصرف‌کننده، و قرمز خطای سرویس پشتیبان.",
+        faultTitle: "کدام سرویس قطع است و از کدام سمت",
+        recentTitle: "آخرین فراخوانی‌ها",
+        callerTitle: "هر کاربر، هر سرویس",
+        successCalls: "موفق",
+        consumerFail: "ناموفق مصرف‌کننده",
+        providerFail: "ناموفق پشتیبان",
+        colCaller: "کاربر",
+        colLast: "آخرین",
+        searchCallers: "نام کاربر",
+        outageNONE: "سالم",
+        outagePROVIDER: "قطع پشتیبان",
+        outageCONSUMER: "رد مصرف‌کننده",
+        outageOPERATOR: "خاموش توسط اپراتور",
+        faultNONE: "سرویس پشتیبان در دسترس است و آخرین فراخوانی هم به آن رسیده.",
+        faultIdle: "سرویس پشتیبان در دسترس است. هنوز فراخوانی ثبت نشده.",
+        faultCallerPressure: "سرویس قطع نیست. پشتیبان در دسترس است و رد شدن‌ها از سمت مصرف‌کننده ثبت شده.",
+        faultPROVIDER: "قطع از سمت سرویس پشتیبان است. دروازه به آن نمی‌رسد یا از آن خطای ۵۰۰ گرفته.",
+        faultCONSUMER: "سرویس پشتیبان در دسترس است. آخرین رد شدن از سمت مصرف‌کننده بوده، معمولاً به‌خاطر توکن یا اسکوپ.",
+        faultOPERATOR: "اپراتور این سرویس را خاموش کرده است. این قطع نه از سمت مصرف‌کننده است و نه از سمت پشتیبان.",
+        sideSUCCESS: "موفق",
+        sideCONSUMER: "مصرف‌کننده",
+        sidePROVIDER: "پشتیبان",
+        sideLIMITED: "سقف",
+        sideOPERATOR: "اپراتور",
+        noCalls: "هنوز فراخوانی ثبت نشده است."
       },
       en: {
         title: "API Gateway Console",
@@ -451,6 +691,8 @@
         activityEmpty: "No change has been recorded yet.",
         enable: "Enabled",
         disable: "Disabled",
+        turnOn: "Enable",
+        turnOff: "Disable",
         connected: "Connected",
         disconnected: "Disconnected",
         unseen: "Not checked yet",
@@ -479,7 +721,74 @@
         circuitOPEN: "Open",
         circuitHALF_OPEN: "Half-open",
         circuitDISABLED: "Disabled",
-        circuitUNKNOWN: "Unknown"
+        circuitUNKNOWN: "Unknown",
+        directoryTitle: "Service directory",
+        createService: "New service",
+        editService: "Edit service",
+        search: "Search",
+        filter: "Filter",
+        searchServices: "Id, address, or scope",
+        searchActivity: "Service or detail",
+        filterAll: "All",
+        filterEnabled: "Enabled",
+        filterDisabled: "Disabled",
+        filterConnected: "Connected",
+        filterDisconnected: "Disconnected",
+        allServices: "All services",
+        colService: "Service",
+        colState: "State",
+        colConn: "Connection",
+        colCalls: "Calls",
+        colActions: "Actions",
+        system: "System",
+        custom: "Custom",
+        edit: "Edit",
+        remove: "Delete",
+        noMatches: "Nothing matches this search or filter.",
+        page: "Page",
+        prev: "Previous",
+        next: "Next",
+        fieldId: "Id",
+        cancel: "Cancel",
+        saveService: "Save",
+        systemLocked: "The id, backend, and scope of a system service stay fixed. You can change enablement and the rate limit.",
+        confirmDelete: "Delete service {id} and its route?",
+        deleted: "The service was deleted.",
+        created: "The service was created and the gateway now routes to it.",
+        updated: "The change was saved.",
+        invalidId: "The id must start with a lowercase letter and contain only letters, digits, and hyphens.",
+        reservedId: "This id is reserved.",
+        duplicateService: "This id already exists.",
+        invalidBackend: "The backend must be an http or https address with a host.",
+        invalidScope: "The scope can only be orders.read or customers.read.",
+        systemService: "A system service cannot be deleted and its address cannot change.",
+        insightTitle: "Connections and calls",
+        insightHint: "The charts refresh every few seconds from the gateway’s own counters. Green is success, gold is a caller rejection, and red is a backend failure.",
+        faultTitle: "Which service is down, and from which side",
+        recentTitle: "Latest calls",
+        callerTitle: "Each caller, each service",
+        successCalls: "Succeeded",
+        consumerFail: "Caller failed",
+        providerFail: "Provider failed",
+        colCaller: "Caller",
+        colLast: "Latest",
+        searchCallers: "Caller name",
+        outageNONE: "Healthy",
+        outagePROVIDER: "Provider down",
+        outageCONSUMER: "Caller rejected",
+        outageOPERATOR: "Disabled by operator",
+        faultNONE: "The provider is reachable, and the latest call reached it.",
+        faultIdle: "The provider is reachable. No call has been recorded yet.",
+        faultCallerPressure: "The service is not down. The provider is reachable, and the rejections are on the caller side.",
+        faultPROVIDER: "The outage is on the provider side. The gateway cannot reach it, or the backend returned a server error.",
+        faultCONSUMER: "The provider is reachable. The latest rejection came from the caller, usually a token or a scope.",
+        faultOPERATOR: "An operator disabled this service. The outage is neither the caller nor the provider.",
+        sideSUCCESS: "Succeeded",
+        sideCONSUMER: "Caller",
+        sidePROVIDER: "Provider",
+        sideLIMITED: "Limited",
+        sideOPERATOR: "Operator",
+        noCalls: "No call has been recorded yet."
       }
     };
 
@@ -590,6 +899,7 @@
       renderFacts();
       renderControls();
       renderActivity();
+      renderInsight();
       paintPreview();
       paintClaims();
       renderHistory();
@@ -734,7 +1044,8 @@
       if (id === "orders") return t().svcOrders;
       if (id === "customers") return t().svcCustomers;
       if (id === "gateway") return t().svcGateway;
-      return "Redis";
+      if (id === "redis") return "Redis";
+      return id;
     }
 
     function formatWhen(iso) {
@@ -752,51 +1063,195 @@
       return `<div class="stat"><span>${escapeHtml(label)}</span><b>${escapeHtml(num(value))}</b></div>`;
     }
 
-    function renderControls() {
-      const active = document.activeElement;
-      if (active && active.closest && active.closest("#controls") && active.tagName === "INPUT") return;
+    const directoryState = { query: "", filter: "all", page: 1, pageSize: 5 };
+    const activityState = { query: "", kind: "all", service: "all", page: 1, pageSize: 4 };
+    const callerState = { query: "", service: "all", page: 1, pageSize: 5 };
+    let editingId = null;
+
+    function pageOf(items, state) {
+      const pages = Math.max(1, Math.ceil(items.length / state.pageSize));
+      state.page = Math.min(Math.max(1, state.page), pages);
+      const start = (state.page - 1) * state.pageSize;
+      return { slice: items.slice(start, start + state.pageSize), pages, page: state.page, total: items.length };
+    }
+
+    function pagerHtml(info, attr) {
       const text = t();
-      const operations = latestSnapshot && latestSnapshot.operations ? latestSnapshot.operations : [];
-      const root = document.querySelector("#controls");
-      root.innerHTML = operations.map((op) => {
+      return `<button type="button" ${attr}="${info.page - 1}" ${info.page <= 1 ? "disabled" : ""}>${escapeHtml(text.prev)}</button>
+        <span>${escapeHtml(text.page)} <bdi dir="ltr">${escapeHtml(num(info.page))}</bdi> / <bdi dir="ltr">${escapeHtml(num(info.pages))}</bdi> · <bdi dir="ltr">${escapeHtml(num(info.total))}</bdi></span>
+        <button type="button" ${attr}="${info.page + 1}" ${info.page >= info.pages ? "disabled" : ""}>${escapeHtml(text.next)}</button>`;
+    }
+
+    function paintDirectoryChrome() {
+      const text = t();
+      const directory = document.querySelector("#directory-filter");
+      directory.querySelector("[value='all']").textContent = text.filterAll;
+      directory.querySelector("[value='enabled']").textContent = text.filterEnabled;
+      directory.querySelector("[value='disabled']").textContent = text.filterDisabled;
+      directory.querySelector("[value='connected']").textContent = text.filterConnected;
+      directory.querySelector("[value='disconnected']").textContent = text.filterDisconnected;
+      const kinds = document.querySelector("#activity-filter");
+      kinds.querySelector("[value='all']").textContent = text.filterAll;
+      kinds.querySelector("[value='UP']").textContent = text.kindUP;
+      kinds.querySelector("[value='DOWN']").textContent = text.kindDOWN;
+      kinds.querySelector("[value='ENABLED']").textContent = text.kindENABLED;
+      kinds.querySelector("[value='DISABLED']").textContent = text.kindDISABLED;
+    }
+
+    function matchesDirectory(op) {
+      const query = directoryState.query.trim().toLowerCase();
+      const haystack = (op.id + " " + (op.backend || "") + " " + (op.scope || "")).toLowerCase();
+      if (query && !haystack.includes(query)) return false;
+      if (directoryState.filter === "enabled") return op.enabled;
+      if (directoryState.filter === "disabled") return !op.enabled;
+      if (directoryState.filter === "connected") return op.connectivity === "UP";
+      if (directoryState.filter === "disconnected") return op.connectivity === "DOWN";
+      return true;
+    }
+
+    function renderControls() {
+      paintDirectoryChrome();
+      const text = t();
+      const operations = (latestSnapshot && latestSnapshot.operations ? latestSnapshot.operations : []).filter(matchesDirectory);
+      const page = pageOf(operations, directoryState);
+      const body = document.querySelector("#directory-body");
+      body.innerHTML = page.slice.length ? page.slice.map((op) => {
         const connWord = op.connectivity === "UP" ? text.connected : (op.connectivity === "DOWN" ? text.disconnected : text.unseen);
-        const since = op.since ? " · " + text.since + " " + formatWhen(op.since) : "";
-        return `<article class="panel control">
-          <header>
-            <h3>${escapeHtml(serviceName(op.id))}</h3>
-            <button class="switch ${op.enabled ? "on" : "off"}" type="button" data-toggle="${escapeHtml(op.id)}">${escapeHtml(op.enabled ? text.enable : text.disable)}</button>
-          </header>
-          <p class="conn ${escapeHtml(op.connectivity)}">${escapeHtml(connWord + since)} · ${escapeHtml(text.transitions)} ${escapeHtml(num(op.transitions))}</p>
-          <p class="conn">${escapeHtml(text.circuit)}: ${escapeHtml(circuitLabel(op.circuit))}</p>
-          <div class="stats">
-            ${stat(text.calls, op.calls)}
-            ${stat(text.succeeded, op.succeeded)}
-            ${stat(text.limited, op.limited)}
-            ${stat(text.rejected, op.rejected)}
-            ${stat(text.failed, op.failed)}
-          </div>
-          <form class="rate-form" data-rate="${escapeHtml(op.id)}">
-            <label>${escapeHtml(text.perSecond)}<input name="replenish" type="number" min="1" max="1000" dir="ltr" value="${Number(op.replenishPerSecond)}"></label>
-            <label>${escapeHtml(text.burst)}<input name="burst" type="number" min="1" max="5000" dir="ltr" value="${Number(op.burst)}"></label>
-            <button type="submit">${escapeHtml(text.saveLimit)}</button>
-          </form>
-          <p class="form-note" id="note-${escapeHtml(op.id)}"></p>
-        </article>`;
-      }).join("");
+        const actions = `<button type="button" class="switch ${op.enabled ? "on" : "off"}" data-toggle="${escapeHtml(op.id)}">${escapeHtml(op.enabled ? text.turnOff : text.turnOn)}</button>
+          <button type="button" data-edit="${escapeHtml(op.id)}">${escapeHtml(text.edit)}</button>
+          ${op.system ? "" : `<button type="button" data-delete="${escapeHtml(op.id)}">${escapeHtml(text.remove)}</button>`}`;
+        return `<tr class="${op.enabled ? "" : "muted-row"}">
+          <td><bdi dir="ltr">${escapeHtml(serviceName(op.id))}</bdi><div class="detail">${escapeHtml(op.system ? text.system : text.custom)}</div></td>
+          <td>${escapeHtml(op.enabled ? text.enable : text.disable)}</td>
+          <td class="conn ${escapeHtml(op.connectivity)}">${escapeHtml(connWord)}<div class="detail">${escapeHtml(text["outage" + (op.outage || "NONE")] || "")}</div></td>
+          <td><bdi dir="ltr">${escapeHtml(num(op.calls))}</bdi></td>
+          <td><bdi dir="ltr">${escapeHtml(num(op.replenishPerSecond))}</bdi> / <bdi dir="ltr">${escapeHtml(num(op.burst))}</bdi></td>
+          <td><bdi dir="ltr">${escapeHtml(op.scope || "")}</bdi></td>
+          <td><bdi dir="ltr">${escapeHtml(op.backend || "")}</bdi></td>
+          <td><div class="row-actions">${actions}</div></td>
+        </tr>`;
+      }).join("") : `<tr><td colspan="8">${escapeHtml(text.noMatches)}</td></tr>`;
+      document.querySelector("#directory-pager").innerHTML = pagerHtml(page, "data-dir-page");
+      syncLabServices();
+    }
+
+    function syncLabServices() {
+      const current = serviceSelect.value;
+      while (serviceSelect.options.length > 2) serviceSelect.remove(2);
+      (latestSnapshot && latestSnapshot.operations ? latestSnapshot.operations : [])
+        .filter((op) => !op.system)
+        .forEach((op) => {
+          const option = document.createElement("option");
+          option.value = op.id;
+          option.textContent = op.id;
+          serviceSelect.appendChild(option);
+        });
+      if ([...serviceSelect.options].some((option) => option.value === current)) serviceSelect.value = current;
     }
 
     function renderActivity() {
       const text = t();
       const events = latestSnapshot && latestSnapshot.activity ? latestSnapshot.activity : [];
+      const serviceSelectFilter = document.querySelector("#activity-service");
+      const ids = ["all"];
+      (latestSnapshot && latestSnapshot.operations ? latestSnapshot.operations : []).forEach((op) => {
+        if (!ids.includes(op.id)) ids.push(op.id);
+      });
+      events.forEach((event) => { if (event.serviceId && !ids.includes(event.serviceId)) ids.push(event.serviceId); });
+      serviceSelectFilter.innerHTML = ids.map((id) => `<option value="${escapeHtml(id)}">${escapeHtml(id === "all" ? text.allServices : serviceName(id))}</option>`).join("");
+      if (ids.includes(activityState.service)) serviceSelectFilter.value = activityState.service;
+      const query = activityState.query.trim().toLowerCase();
+      const filtered = events.filter((event) => {
+        if (activityState.kind !== "all" && event.kind !== activityState.kind) return false;
+        if (activityState.service !== "all" && event.serviceId !== activityState.service) return false;
+        const haystack = (event.serviceId + " " + (event.detail || "") + " " + (text["kind" + event.kind] || event.kind)).toLowerCase();
+        return !query || haystack.includes(query);
+      });
+      const page = pageOf(filtered, activityState);
       const root = document.querySelector("#activity");
-      if (!events.length) {
-        root.innerHTML = `<li>${escapeHtml(text.activityEmpty)}</li>`;
-        return;
-      }
-      root.innerHTML = events.map((event) => `<li>
-        <span><b class="kind ${escapeHtml(event.kind)}">${escapeHtml(text["kind" + event.kind] || event.kind)}</b> ${escapeHtml(serviceName(event.serviceId))}${event.detail ? " · " + escapeHtml(event.detail) : ""}</span>
+      root.innerHTML = page.slice.length ? page.slice.map((event) => `<li>
+        <span><b class="kind ${escapeHtml(event.kind)}">${escapeHtml(text["kind" + event.kind] || event.kind)}</b> <bdi dir="ltr">${escapeHtml(serviceName(event.serviceId))}</bdi>${event.detail ? " · " + escapeHtml(event.detail) : ""}</span>
         <time dir="ltr">${escapeHtml(formatWhen(event.at))}</time>
-      </li>`).join("");
+      </li>`).join("") : `<li>${escapeHtml(query || activityState.kind !== "all" || activityState.service !== "all" ? text.noMatches : text.activityEmpty)}</li>`;
+      document.querySelector("#activity-pager").innerHTML = pagerHtml(page, "data-act-page");
+    }
+
+    function bar(value, max, kind) {
+      const height = Math.max(value > 0 ? 8 : 4, Math.round((value / max) * 78));
+      return `<div><bdi dir="ltr">${escapeHtml(num(value))}</bdi><i class="${kind}${value ? "" : " zero"}" style="height:${height}px"></i></div>`;
+    }
+
+    function renderInsight() {
+      const text = t();
+      const operations = latestSnapshot && latestSnapshot.operations ? latestSnapshot.operations : [];
+      document.querySelector("#charts").innerHTML = operations.length ? operations.map((op) => {
+        const max = Math.max(op.succeeded || 0, op.rejected || 0, op.failed || 0, 1);
+        return `<article class="chart">
+          <strong><bdi dir="ltr">${escapeHtml(serviceName(op.id))}</bdi></strong>
+          <div class="bars">
+            ${bar(op.succeeded || 0, max, "success")}
+            ${bar(op.rejected || 0, max, "consumer")}
+            ${bar(op.failed || 0, max, "provider")}
+          </div>
+        </article>`;
+      }).join("") : `<p class="hint">${escapeHtml(text.noCalls)}</p>`;
+      document.querySelector("#faults").innerHTML = operations.map((op) => {
+        const side = op.outage || "NONE";
+        const sentence = side === "NONE" && !(op.calls > 0) ? text.faultIdle
+          : (side === "NONE" && op.rejected > 0 ? text.faultCallerPressure : (text["fault" + side] || ""));
+        const provider = op.connectivity === "UP" ? text.connected : (op.connectivity === "DOWN" ? text.disconnected : text.unseen);
+        return `<article class="fault ${escapeHtml(side)}">
+          <strong><bdi dir="ltr">${escapeHtml(serviceName(op.id))}</bdi></strong>
+          <div class="detail">${escapeHtml(text["outage" + side] || side)} · ${escapeHtml(text.colConn)}: ${escapeHtml(provider)}</div>
+          <p>${escapeHtml(sentence)}</p>
+          <p class="detail"><bdi dir="ltr">${escapeHtml(num(op.succeeded || 0))}</bdi> ${escapeHtml(text.successCalls)} · <bdi dir="ltr">${escapeHtml(num(op.rejected || 0))}</bdi> ${escapeHtml(text.consumerFail)} · <bdi dir="ltr">${escapeHtml(num(op.failed || 0))}</bdi> ${escapeHtml(text.providerFail)}</p>
+        </article>`;
+      }).join("");
+      const calls = latestSnapshot && latestSnapshot.calls ? latestSnapshot.calls : [];
+      document.querySelector("#call-strip").innerHTML = calls.slice(0, 24).map((call) =>
+        `<i class="${escapeHtml(call.side)}" title="${escapeHtml(call.caller + " · " + call.serviceId + " · " + call.status)}"></i>`).join("");
+      document.querySelector("#recent-calls").innerHTML = calls.length ? calls.slice(0, 6).map((call) => `<li>
+        <span><b class="kind ${escapeHtml(call.side === "SUCCESS" ? "UP" : "DOWN")}">${escapeHtml(text["side" + call.side] || call.side)}</b> <bdi dir="ltr">${escapeHtml(call.caller)}</bdi> · <bdi dir="ltr">${escapeHtml(serviceName(call.serviceId))}</bdi> · <bdi dir="ltr">${escapeHtml(String(call.status))}</bdi></span>
+        <time dir="ltr">${escapeHtml(formatWhen(call.at))}</time>
+      </li>`).join("") : `<li>${escapeHtml(text.noCalls)}</li>`;
+      const callers = latestSnapshot && latestSnapshot.callers ? latestSnapshot.callers : [];
+      const select = document.querySelector("#caller-service");
+      const ids = ["all"];
+      operations.forEach((op) => { if (!ids.includes(op.id)) ids.push(op.id); });
+      callers.forEach((row) => { if (row.serviceId && !ids.includes(row.serviceId)) ids.push(row.serviceId); });
+      select.innerHTML = ids.map((id) => `<option value="${escapeHtml(id)}">${escapeHtml(id === "all" ? text.allServices : serviceName(id))}</option>`).join("");
+      if (ids.includes(callerState.service)) select.value = callerState.service;
+      const query = callerState.query.trim().toLowerCase();
+      const filtered = callers.filter((row) => {
+        if (callerState.service !== "all" && row.serviceId !== callerState.service) return false;
+        return !query || String(row.caller || "").toLowerCase().includes(query);
+      });
+      const page = pageOf(filtered, callerState);
+      document.querySelector("#caller-body").innerHTML = page.slice.length ? page.slice.map((row) => `<tr>
+        <td><bdi dir="ltr">${escapeHtml(row.caller)}</bdi></td>
+        <td><bdi dir="ltr">${escapeHtml(serviceName(row.serviceId))}</bdi></td>
+        <td><bdi dir="ltr">${escapeHtml(num(row.succeeded))}</bdi></td>
+        <td><bdi dir="ltr">${escapeHtml(num(row.consumerFailures))}</bdi></td>
+        <td><bdi dir="ltr">${escapeHtml(num(row.providerFailures))}</bdi></td>
+        <td><bdi dir="ltr">${escapeHtml(num(row.limited))}</bdi></td>
+        <td><bdi dir="ltr">${escapeHtml(String(row.lastStatus))}</bdi> · <time dir="ltr">${escapeHtml(formatWhen(row.lastAt))}</time></td>
+      </tr>`).join("") : `<tr><td colspan="7">${escapeHtml(query || callerState.service !== "all" ? text.noMatches : text.noCalls)}</td></tr>`;
+      document.querySelector("#caller-pager").innerHTML = pagerHtml(page, "data-caller-page");
+    }
+
+    function routeError(payload) {
+      const key = {
+        burst_below_rate: "burstBelow",
+        rate_out_of_range: "rateRange",
+        unknown_service: "unknownService",
+        invalid_id: "invalidId",
+        reserved_id: "reservedId",
+        duplicate_service: "duplicateService",
+        invalid_backend: "invalidBackend",
+        invalid_scope: "invalidScope",
+        system_service: "systemService"
+      }[payload.error] || "saveFail";
+      return t()[key];
     }
 
     async function updateRoute(id, body) {
@@ -806,15 +1261,8 @@
         body: JSON.stringify(body)
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        const key = payload.error === "burst_below_rate" ? "burstBelow"
-          : (payload.error === "rate_out_of_range" ? "rateRange"
-            : (payload.error === "unknown_service" ? "unknownService" : "saveFail"));
-        return t()[key];
-      }
+      if (!response.ok) return routeError(payload);
       await refresh();
-      const note = document.querySelector("#note-" + id);
-      if (note) note.textContent = body.enabled === undefined ? t().saved : "";
       return "";
     }
 
@@ -845,6 +1293,7 @@
         renderFacts();
         renderControls();
         renderActivity();
+        renderInsight();
         paintFooter(latestSnapshot.checkedAt);
       } catch (error) {
         checked.textContent = t().footerFail;
@@ -858,14 +1307,15 @@
     }
 
     function requiredScope() {
-      return serviceSelect.value === "orders" ? "orders.read" : "customers.read";
+      const operation = (latestSnapshot && latestSnapshot.operations ? latestSnapshot.operations : [])
+        .find((item) => item.id === serviceSelect.value);
+      if (operation && operation.scope) return operation.scope;
+      return serviceSelect.value === "customers" ? "customers.read" : "orders.read";
     }
 
     function resourcePath() {
       const id = idInput.value.trim();
-      return serviceSelect.value === "orders"
-        ? `/api/orders/${encodeURIComponent(id)}`
-        : `/api/customers/${encodeURIComponent(id)}`;
+      return `/api/${encodeURIComponent(serviceSelect.value)}/${encodeURIComponent(id)}`;
     }
 
     function validId(id) {
@@ -1072,28 +1522,111 @@
       button.addEventListener("click", () => setLang(button.dataset.lang));
     });
     document.querySelector("#controls").addEventListener("click", async (event) => {
+      const pageButton = event.target.closest("[data-dir-page]");
+      if (pageButton && !pageButton.disabled) {
+        directoryState.page = Number(pageButton.dataset.dirPage);
+        renderControls();
+        return;
+      }
+      const edit = event.target.closest("[data-edit]");
+      if (edit) {
+        const op = (latestSnapshot.operations || []).find((item) => item.id === edit.dataset.edit);
+        if (op) openServiceDialog(op);
+        return;
+      }
+      const remove = event.target.closest("[data-delete]");
+      if (remove) {
+        await deleteService(remove.dataset.delete);
+        return;
+      }
       const button = event.target.closest("[data-toggle]");
       if (!button || !latestSnapshot) return;
       const op = (latestSnapshot.operations || []).find((item) => item.id === button.dataset.toggle);
       if (!op) return;
       button.disabled = true;
       try {
-        const message = await updateRoute(op.id, { enabled: !op.enabled });
-        const note = document.querySelector("#note-" + op.id);
-        if (message && note) note.textContent = message;
+        await updateRoute(op.id, { enabled: !op.enabled });
       } finally {
         const fresh = document.querySelector(`[data-toggle="${op.id}"]`);
         if (fresh) fresh.disabled = false;
       }
     });
 
-    document.querySelector("#controls").addEventListener("submit", async (event) => {
-      const form = event.target.closest("form[data-rate]");
-      if (!form) return;
+    document.querySelector("#activity-pager").addEventListener("click", (event) => {
+      const pageButton = event.target.closest("[data-act-page]");
+      if (!pageButton || pageButton.disabled) return;
+      activityState.page = Number(pageButton.dataset.actPage);
+      renderActivity();
+    });
+
+    document.querySelector("#directory-search").addEventListener("input", (event) => {
+      directoryState.query = event.target.value;
+      directoryState.page = 1;
+      renderControls();
+    });
+    document.querySelector("#directory-filter").addEventListener("change", (event) => {
+      directoryState.filter = event.target.value;
+      directoryState.page = 1;
+      renderControls();
+    });
+    document.querySelector("#activity-search").addEventListener("input", (event) => {
+      activityState.query = event.target.value;
+      activityState.page = 1;
+      renderActivity();
+    });
+    document.querySelector("#activity-filter").addEventListener("change", (event) => {
+      activityState.kind = event.target.value;
+      activityState.page = 1;
+      renderActivity();
+    });
+    document.querySelector("#activity-service").addEventListener("change", (event) => {
+      activityState.service = event.target.value;
+      activityState.page = 1;
+      renderActivity();
+    });
+    document.querySelector("#caller-search").addEventListener("input", (event) => {
+      callerState.query = event.target.value;
+      callerState.page = 1;
+      renderInsight();
+    });
+    document.querySelector("#caller-service").addEventListener("change", (event) => {
+      callerState.service = event.target.value;
+      callerState.page = 1;
+      renderInsight();
+    });
+    document.querySelector("#caller-pager").addEventListener("click", (event) => {
+      const pageButton = event.target.closest("[data-caller-page]");
+      if (!pageButton || pageButton.disabled) return;
+      callerState.page = Number(pageButton.dataset.callerPage);
+      renderInsight();
+    });
+    document.querySelector("#dialog-cancel").addEventListener("click", () => document.querySelector("#service-dialog").close());
+    document.querySelector("#service-form").addEventListener("submit", async (event) => {
       event.preventDefault();
+      await submitServiceForm(event.target);
+    });
+
+    function openServiceDialog(op) {
+      editingId = op ? op.id : null;
+      const form = document.querySelector("#service-form");
+      form.id.value = op ? op.id : "";
+      form.id.disabled = Boolean(op);
+      form.backend.value = op ? (op.backend || "") : "http://127.0.0.1:8081";
+      form.scope.value = op && op.scope ? op.scope : "orders.read";
+      form.backend.disabled = Boolean(op && op.system);
+      form.scope.disabled = Boolean(op && op.system);
+      form.replenish.value = op ? op.replenishPerSecond : 10;
+      form.burst.value = op ? op.burst : 20;
+      form.enabled.checked = op ? op.enabled : true;
+      document.querySelector("#dialog-title").textContent = op ? t().editService : t().createService;
+      document.querySelector("#dialog-note").textContent = op && op.system ? t().systemLocked : "";
+      document.querySelector("#service-dialog").showModal();
+    }
+
+    async function submitServiceForm(form) {
       const replenish = Number(form.replenish.value);
       const burst = Number(form.burst.value);
-      const note = document.querySelector("#note-" + form.dataset.rate);
+      const note = document.querySelector("#dialog-note");
       if (!Number.isInteger(replenish) || replenish < 1 || replenish > 1000 || !Number.isInteger(burst) || burst < 1 || burst > 5000) {
         note.textContent = t().rateRange;
         return;
@@ -1102,17 +1635,42 @@
         note.textContent = t().burstBelow;
         return;
       }
-      const button = form.querySelector("button");
+      const body = { replenishPerSecond: replenish, burst, enabled: form.enabled.checked };
+      const currentOp = editingId ? (latestSnapshot.operations || []).find((item) => item.id === editingId) : null;
+      if (!currentOp || !currentOp.system) {
+        body.backend = form.backend.value.trim();
+        body.scope = form.scope.value;
+      }
+      const button = document.querySelector("#dialog-save");
       button.disabled = true;
       try {
-        const message = await updateRoute(form.dataset.rate, { replenishPerSecond: replenish, burst });
-        const fresh = document.querySelector("#note-" + form.dataset.rate);
-        if (message && fresh) fresh.textContent = message;
+        const response = await fetch(editingId ? "/api/console/routes/" + encodeURIComponent(editingId) : "/api/console/routes", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify(editingId ? body : { ...body, id: form.id.value.trim() })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          note.textContent = routeError(payload);
+          return;
+        }
+        document.querySelector("#service-dialog").close();
+        await refresh();
       } finally {
-        const freshButton = document.querySelector(`form[data-rate="${form.dataset.rate}"] button`);
-        if (freshButton) freshButton.disabled = false;
+        button.disabled = false;
       }
-    });
+    }
+
+    async function deleteService(id) {
+      if (!window.confirm(t().confirmDelete.replace("{id}", id))) return;
+      const response = await fetch("/api/console/routes/" + encodeURIComponent(id), { method: "DELETE" });
+      if (!response.ok && response.status !== 204) {
+        const payload = await response.json().catch(() => ({}));
+        window.alert(routeError(payload));
+        return;
+      }
+      await refresh();
+    }
 
     serviceSelect.addEventListener("change", () => { paintPreview(); paintClaims(); });
     idInput.addEventListener("input", paintPreview);

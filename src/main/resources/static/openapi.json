@@ -146,6 +146,54 @@
           "400": { "description": "سقف نامعتبر است یا انباشت از نرخ پرشدن کمتر است" },
           "404": { "description": "این سرویس قابل کنترل نیست" }
         }
+      },
+      "delete": {
+        "tags": ["operations"],
+        "summary": "حذف سرویس ساخته‌شده",
+        "operationId": "deleteRouteControl",
+        "parameters": [
+          {
+            "name": "serviceId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "سرویس و مسیر آن حذف شد" },
+          "400": { "description": "سرویس سیستمی قابل حذف نیست" },
+          "404": { "description": "سرویس پیدا نشد" }
+        }
+      }
+    },
+    "/api/console/routes": {
+      "post": {
+        "tags": ["operations"],
+        "summary": "ساخت سرویس و مسیر تازه",
+        "operationId": "createRouteControl",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id", "backend", "scope"],
+                "properties": {
+                  "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,30}$" },
+                  "backend": { "type": "string", "format": "uri" },
+                  "scope": { "type": "string", "enum": ["orders.read", "customers.read"] },
+                  "enabled": { "type": "boolean" },
+                  "replenishPerSecond": { "type": "integer", "minimum": 1, "maximum": 1000 },
+                  "burst": { "type": "integer", "minimum": 1, "maximum": 5000 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "سرویس ساخته شد و مسیر آن منتشر شد" },
+          "400": { "description": "شناسه، آدرس، اسکوپ یا سقف نامعتبر است" }
+        }
       }
     }
   }

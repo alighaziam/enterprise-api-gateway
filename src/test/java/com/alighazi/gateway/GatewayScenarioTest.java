@@ -105,7 +105,9 @@ class GatewayScenarioTest {
                     .value(body -> assertThat(body)
                             .contains("کنسول عملیاتی")
                             .contains("Operations console")
-                            .contains("Vazirmatn-wght.woff2"));
+                            .contains("Vazirmatn-wght.woff2")
+                            .contains("directory-search")
+                            .contains("caller-search"));
 
             client.get().uri("/fonts/Vazirmatn-wght.woff2")
                     .exchange()
@@ -365,6 +367,84 @@ class GatewayScenarioTest {
                         .exchange()
                         .expectStatus().isOk();
             }
+        }
+
+        @Test
+        void operatorCanCreateAServiceThenCallAndDeleteIt() throws Exception {
+            String id = "billing";
+            try {
+                client.post().uri("/api/console/routes")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .bodyValue(java.util.Map.of(
+                                "id", id,
+                                "backend", base(ordersServer),
+                                "scope", "orders.read",
+                                "replenishPerSecond", 5,
+                                "burst", 10,
+                                "enabled", true))
+                        .exchange()
+                        .expectStatus().isCreated()
+                        .expectBody()
+                        .jsonPath("$.id").isEqualTo(id)
+                        .jsonPath("$.system").isEqualTo(false)
+                        .jsonPath("$.scope").isEqualTo("orders.read");
+
+                int status = 0;
+                String body = "";
+                for (int attempt = 0; attempt < 25; attempt++) {
+                    var result = client.get().uri("/api/billing/77")
+                            .header(HttpHeaders.AUTHORIZATION, bearer(readToken("billing-" + attempt)))
+                            .exchange()
+                            .expectBody(String.class)
+                            .returnResult();
+                    status = result.getStatus().value();
+                    body = result.getResponseBody() == null ? "" : result.getResponseBody();
+                    if (status == 200 && body.contains("\"path\":\"/77\"")) {
+                        break;
+                    }
+                    Thread.sleep(200);
+                }
+                assertThat(status).isEqualTo(200);
+                assertThat(body).contains("\"path\":\"/77\"");
+
+                client.delete().uri("/api/console/routes/orders")
+                        .exchange()
+                        .expectStatus().isBadRequest()
+                        .expectBody()
+                        .jsonPath("$.error").isEqualTo("system_service");
+            } finally {
+                client.delete().uri("/api/console/routes/" + id)
+                        .exchange()
+                        .expectStatus().isNoContent();
+            }
+
+            client.get().uri("/api/billing/77")
+                    .header(HttpHeaders.AUTHORIZATION, bearer(readToken("billing-gone")))
+                    .exchange()
+                    .expectStatus().isForbidden();
+        }
+
+        @Test
+        void attributesSuccessfulAndRejectedCallsToTheCaller() {
+            String subject = "caller-" + UUID.randomUUID();
+            client.get().uri("/api/orders/" + UUID.randomUUID())
+                    .header(HttpHeaders.AUTHORIZATION, bearer(readToken(subject)))
+                    .exchange()
+                    .expectStatus().isOk();
+            client.get().uri("/api/customers/" + UUID.randomUUID())
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token(subject, "orders.read", AUDIENCE, ISSUER, Instant.now().plusSeconds(300))))
+                    .exchange()
+                    .expectStatus().isForbidden();
+
+            client.get().uri("/api/console/status")
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.callers[?(@.caller == '" + subject + "')].serviceId")
+                    .value(ids -> assertThat(new java.util.ArrayList<Object>((java.util.Collection<?>) ids))
+                            .contains("orders", "customers"))
+                    .jsonPath("$.calls[0].caller").isEqualTo(subject)
+                    .jsonPath("$.calls[0].side").isEqualTo("CONSUMER");
         }
     }
 
