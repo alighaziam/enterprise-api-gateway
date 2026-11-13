@@ -1,6 +1,7 @@
 package com.alighazi.gateway.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -25,8 +26,10 @@ public class SecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .pathMatchers("/", "/index.html", "/favicon.ico", "/fonts/**", "/api/console/**").permitAll()
+                        .pathMatchers("/", "/index.html", "/favicon.ico", "/fonts/**").permitAll()
                         .pathMatchers("/swagger-ui.html", "/openapi.json", "/webjars/**", "/jwks").permitAll()
+                        .pathMatchers("/api/console/token").permitAll()
+                        .pathMatchers("/api/console/**").hasAuthority("SCOPE_gateway.admin")
                         .pathMatchers("/actuator/health", "/actuator/info").permitAll()
                         .pathMatchers("/fallback/**").denyAll()
                         .pathMatchers(HttpMethod.GET, "/api/orders/**").hasAuthority("SCOPE_orders.read")
