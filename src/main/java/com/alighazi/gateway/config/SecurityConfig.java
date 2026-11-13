@@ -19,7 +19,8 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 public class SecurityConfig {
 
     @Bean
-    SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+    SecurityWebFilterChain springSecurityFilterChain(
+            ServerHttpSecurity http, RegisteredServiceAuthorizationManager serviceAccess) {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
@@ -30,7 +31,8 @@ public class SecurityConfig {
                         .pathMatchers("/fallback/**").denyAll()
                         .pathMatchers(HttpMethod.GET, "/api/orders/**").hasAuthority("SCOPE_orders.read")
                         .pathMatchers(HttpMethod.GET, "/api/customers/**").hasAuthority("SCOPE_customers.read")
-                        .pathMatchers("/api/orders/**", "/api/customers/**").denyAll()
+                        .pathMatchers(HttpMethod.GET, "/api/*", "/api/*/**").access(serviceAccess)
+                        .pathMatchers("/api/orders/**", "/api/customers/**", "/api/*", "/api/*/**").denyAll()
                         .anyExchange().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}))
                 .build();

@@ -26,7 +26,7 @@ public class RouteAvailabilityFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String serviceId = RouteGovernance.serviceId(exchange.getRequest().getPath().value());
+        String serviceId = governance.resolve(exchange.getRequest().getPath().value());
         if (serviceId == null || governance.isEnabled(serviceId)) {
             return chain.filter(exchange);
         }

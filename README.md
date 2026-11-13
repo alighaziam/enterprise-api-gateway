@@ -72,13 +72,19 @@ Requirements: JDK 21, Maven 3.9+, and Docker Compose v2.
    mvn --batch-mode clean verify
    ```
 
-4. Start Redis, WireMock backends, and the gateway:
+4. Start Redis, the sample backends, and the gateway:
 
    ```bash
-   docker compose up --build
+   docker compose up -d --build
    ```
 
-The gateway listens on http://localhost:8080. The WireMock backends are exposed on ports 8081 (Orders) and 8082 (Customers). The local backends are examples only; WSO2 remains an external dependency. If port 8080 is already taken, start the jar with `--server.port=8090` and use that port in every URL below.
+   Stop the stack:
+
+   ```bash
+   docker compose down
+   ```
+
+The gateway listens on http://localhost:8080 unless `GATEWAY_PORT` in `.env` says otherwise. Sample backends are on ports 8081 (Orders) and 8082 (Customers). If port 8080 is already taken, set `GATEWAY_PORT=8090` before `docker compose up`. When Docker Hub cannot provide `eclipse-temurin:21-jre`, set `GATEWAY_DOCKERFILE=Dockerfile.offline` and put `docker/jre/openjdk-21.0.2_linux-x64_bin.tar.gz` in the project; that archive is not committed. Inside Compose the process still listens on port 8080, so `WSO2_JWKS_URI` stays `http://127.0.0.1:8080/jwks` even when the published host port is 8090.
 
 Local console and Swagger are served by the gateway at `/` and `/swagger-ui.html`. Set `LOCAL_DEV_TOKENS=true` together with `WSO2_ISSUER_URI=http://local-gateway` and `WSO2_JWKS_URI` pointed at the gateway itself (`http://127.0.0.1:8080/jwks`, or `http://127.0.0.1:8090/jwks` when the gateway is on 8090) when you want the console to mint a short-lived read token. Leave that flag unset when the gateway must accept only WSO2 tokens.
 

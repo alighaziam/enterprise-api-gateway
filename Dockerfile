@@ -1,14 +1,7 @@
-FROM maven:3.9-eclipse-temurin-26 AS build
-WORKDIR /workspace
-COPY pom.xml .
-RUN mvn -B -ntp dependency:go-offline
-COPY src ./src
-RUN mvn -B -ntp clean package -DskipTests
 
-FROM eclipse-temurin:25-jre
 WORKDIR /app
 RUN groupadd --system gateway && useradd --system --gid gateway --uid 10001 gateway
-COPY --from=build --chown=gateway:gateway /workspace/target/enterprise-api-gateway-0.1.0-SNAPSHOT.jar /app/app.jar
+COPY --chown=gateway:gateway target/enterprise-api-gateway-0.1.0-SNAPSHOT.jar /app/app.jar
 USER 10001:gateway
 EXPOSE 8080
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0"

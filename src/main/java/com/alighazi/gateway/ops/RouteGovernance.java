@@ -20,11 +20,16 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 public class RouteGovernance {
 
     public static final String DISABLED_ATTRIBUTE = "gateway.route-disabled";
-    private static final int EVENT_LIMIT = 8;
+    private static final int EVENT_LIMIT = 30;
+    private static final java.util.Set<String> RESERVED = java.util.Set.of("gateway", "redis", "orders", "customers", "console");
+
+    private static final int CALL_LIMIT = 40;
+    private static final int CALLER_LIMIT = 24;
 
     private final LiveRateLimit rateLimit;
     private final ObjectProvider<CircuitBreakerRegistry> breakers;
     private final Map<String, ServiceRuntime> services = new ConcurrentHashMap<>();
+    private final ConcurrentLinkedDeque<CallEvent> calls = new ConcurrentLinkedDeque<>();
 
     public RouteGovernance(
             LiveRateLimit rateLimit,
@@ -32,13 +37,15 @@ public class RouteGovernance {
             @Value("${ORDERS_RATE_LIMIT_REPLENISH:20}") int ordersReplenish,
             @Value("${ORDERS_RATE_LIMIT_BURST:40}") int ordersBurst,
             @Value("${CUSTOMERS_RATE_LIMIT_REPLENISH:30}") int customersReplenish,
-            @Value("${CUSTOMERS_RATE_LIMIT_BURST:60}") int customersBurst) {
+            @Value("${CUSTOMERS_RATE_LIMIT_BURST:60}") int customersBurst,
+            @Value("${ORDERS_SERVICE_URI:http://localhost:8081}") String ordersUri,
+            @Value("${CUSTOMERS_SERVICE_URI:http://localhost:8082}") String customersUri) {
         this.rateLimit = rateLimit;
         this.breakers = breakers;
-        services.put("gateway", new ServiceRuntime("gateway", false, 0, 0));
-        services.put("redis", new ServiceRuntime("redis", false, 0, 0));
-        services.put("orders", new ServiceRuntime("orders", true, ordersReplenish, ordersBurst));
-        services.put("customers", new ServiceRuntime("customers", true, customersReplenish, customersBurst));
+        services.put("gateway", new ServiceRuntime("gateway", false, true, "", "", 0, 0));
+        services.put("redis", new ServiceRuntime("redis", false, true, "", "", 0, 0));
+        services.put("orders", new ServiceRuntime("orders", true, true, trimSlash(ordersUri), "orders.read", ordersReplenish, ordersBurst));
+        services.put("customers", new ServiceRuntime("customers", true, true, trimSlash(customersUri), "customers.read", customersReplenish, customersBurst));
     }
 
     public static String serviceId(String path) {
@@ -52,6 +59,41 @@ public class RouteGovernance {
             return "customers";
         }
         return null;
+    }
+
+    public String resolve(String path) {
+        String id = pathSegment(path);
+        if (id == null) {
+            return null;
+        }
+        ServiceRuntime runtime = services.get(id);
+        return runtime != null && runtime.controllable ? id : null;
+    }
+
+    public ServiceOperations create(String id, String backend, String scope, int replenish, int burst, boolean enabled) {
+        String normalized = normalizeId(id);
+        if (services.containsKey(normalized)) {
+            throw new IllegalArgumentException("duplicate_service");
+        }
+        String cleanBackend = validateBackend(backend);
+        String cleanScope = validateScope(scope);
+        validateRates(replenish, burst);
+        ServiceRuntime runtime = new ServiceRuntime(normalized, true, false, cleanBackend, cleanScope, replenish, burst);
+        runtime.enabled.set(enabled);
+        services.put(normalized, runtime);
+        rateLimit.apply(routeId(normalized), replenish, burst);
+        return view(runtime);
+    }
+
+    public void delete(String serviceId) {
+        ServiceRuntime runtime = services.get(serviceId);
+        if (runtime == null || !runtime.controllable) {
+            throw new UnknownService();
+        }
+        if (runtime.system) {
+            throw new IllegalArgumentException("system_service");
+        }
+        services.remove(serviceId);
     }
 
     public static String routeId(String serviceId) {
@@ -89,38 +131,59 @@ public class RouteGovernance {
     }
 
     public void record(String serviceId, int status, boolean disabled) {
+        record(serviceId, status, disabled, "anonymous");
+    }
+
+    public void record(String serviceId, int status, boolean disabled, String caller) {
         ServiceRuntime runtime = services.get(serviceId);
         if (runtime == null) {
             return;
         }
+        String side = sideOf(status, disabled);
+        String who = sanitizeCaller(caller);
+        String at = Instant.now().toString();
         runtime.calls.incrementAndGet();
-        if (disabled) {
+        runtime.lastStatus = status;
+        runtime.lastSide = side;
+        if ("OPERATOR".equals(side)) {
             runtime.disabledHits.incrementAndGet();
-            return;
-        }
-        if (status >= 200 && status < 300) {
+        } else if ("SUCCESS".equals(side)) {
             runtime.succeeded.incrementAndGet();
-        } else if (status == 429) {
+        } else if ("LIMITED".equals(side)) {
             runtime.limited.incrementAndGet();
-        } else if (status == 401 || status == 403) {
-            runtime.rejected.incrementAndGet();
-        } else if (status >= 500) {
+        } else if ("PROVIDER".equals(side)) {
             runtime.failed.incrementAndGet();
+        } else {
+            runtime.rejected.incrementAndGet();
+        }
+        rememberCaller(runtime, who, side, status, at);
+        calls.addFirst(new CallEvent(at, who, serviceId, status, side));
+        while (calls.size() > CALL_LIMIT) {
+            calls.pollLast();
         }
     }
 
     public ServiceOperations update(String serviceId, Boolean enabled, Integer replenishPerSecond, Integer burst) {
+        return update(serviceId, enabled, replenishPerSecond, burst, null, null);
+    }
+
+    public ServiceOperations update(
+            String serviceId, Boolean enabled, Integer replenishPerSecond, Integer burst, String backend, String scope) {
         ServiceRuntime runtime = services.get(serviceId);
         if (runtime == null || !runtime.controllable) {
             throw new UnknownService();
         }
+        if (runtime.system && (backend != null || scope != null)) {
+            throw new IllegalArgumentException("system_service");
+        }
         int nextReplenish = replenishPerSecond == null ? runtime.replenish.get() : replenishPerSecond;
         int nextBurst = burst == null ? runtime.burst.get() : burst;
-        if (nextReplenish < 1 || nextReplenish > 1000 || nextBurst < 1 || nextBurst > 5000) {
-            throw new IllegalArgumentException("rate_out_of_range");
+        validateRates(nextReplenish, nextBurst);
+        if (backend != null) {
+            runtime.backend = validateBackend(backend);
         }
-        if (nextBurst < nextReplenish) {
-            throw new IllegalArgumentException("burst_below_rate");
+        if (scope != null) {
+            runtime.scope = validateScope(scope);
         }
         if (replenishPerSecond != null || burst != null) {
             runtime.replenish.set(nextReplenish);
@@ -138,7 +201,14 @@ public class RouteGovernance {
     }
 
     public List<ServiceOperations> operations() {
-        return List.of(view(services.get("orders")), view(services.get("customers")));
+        List<ServiceOperations> listed = new ArrayList<>();
+        listed.add(view(services.get("orders")));
+        listed.add(view(services.get("customers")));
+        services.values().stream()
+                .filter(runtime -> runtime.controllable && !runtime.system)
+                .sorted(Comparator.comparing(runtime -> runtime.id))
+                .forEach(runtime -> listed.add(view(runtime)));
+        return List.copyOf(listed);
     }
 
     public List<ActivityEvent> activity() {
@@ -147,10 +217,29 @@ public class RouteGovernance {
             events.addAll(runtime.events);
         }
         events.sort(Comparator.comparing(ActivityEvent::at).reversed());
-        return events.size() > 20 ? List.copyOf(events.subList(0, 20)) : List.copyOf(events);
+        return events.size() > 100 ? List.copyOf(events.subList(0, 100)) : List.copyOf(events);
+    }
+
+    public List<CallerUsage> callers() {
+        List<CallerUsage> listed = new ArrayList<>();
+        for (ServiceRuntime runtime : services.values()) {
+            if (!runtime.controllable) {
+                continue;
+            }
+            for (CallerCounter counter : runtime.callers.values()) {
+                listed.add(counter.view(runtime.id));
+            }
+        }
+        listed.sort(Comparator.comparing(CallerUsage::lastAt).reversed());
+        return listed.size() > 80 ? List.copyOf(listed.subList(0, 80)) : List.copyOf(listed);
+    }
+
+    public List<CallEvent> calls() {
+        return calls.size() > CALL_LIMIT ? List.copyOf(new ArrayList<>(calls).subList(0, CALL_LIMIT)) : List.copyOf(calls);
     }
 
     private ServiceOperations view(ServiceRuntime runtime) {
+        String circuit = circuitState(runtime.id);
         return new ServiceOperations(
                 runtime.id,
                 runtime.controllable,
@@ -166,7 +255,135 @@ public class RouteGovernance {
                 runtime.failed.get(),
                 runtime.disabledHits.get(),
                 runtime.transitions.get(),
-                circuitState(runtime.id));
+                circuit,
+                runtime.system,
+                runtime.backend,
+                runtime.scope,
+                outageOf(runtime, circuit));
+    }
+
+    private static String sideOf(int status, boolean disabled) {
+        if (disabled) {
+            return "OPERATOR";
+        }
+        if (status >= 200 && status < 300) {
+            return "SUCCESS";
+        }
+        if (status == 429) {
+            return "LIMITED";
+        }
+        if (status >= 500 || status <= 0) {
+            return "PROVIDER";
+        }
+        return "CONSUMER";
+    }
+
+    private static String outageOf(ServiceRuntime runtime, String circuit) {
+        if (!runtime.enabled.get()) {
+            return "OPERATOR";
+        }
+        if ("DOWN".equals(runtime.connectivity) || "OPEN".equals(circuit) || "PROVIDER".equals(runtime.lastSide)) {
+            return "PROVIDER";
+        }
+        if ("UP".equals(runtime.connectivity) && runtime.succeeded.get() == 0 && runtime.rejected.get() > 0) {
+            return "CONSUMER";
+        }
+        return "NONE";
+    }
+
+    private static String sanitizeCaller(String caller) {
+        if (caller == null || caller.isBlank()) {
+            return "anonymous";
+        }
+        String compact = caller.replaceAll("[\\p{Cntrl}]", "").trim();
+        if (compact.isEmpty()) {
+            return "anonymous";
+        }
+        return compact.length() > 80 ? compact.substring(0, 80) : compact;
+    }
+
+    private static void rememberCaller(ServiceRuntime runtime, String caller, String side, int status, String at) {
+        CallerCounter counter = runtime.callers.computeIfAbsent(caller, CallerCounter::new);
+        switch (side) {
+            case "SUCCESS" -> counter.succeeded.incrementAndGet();
+            case "PROVIDER" -> counter.providerFailures.incrementAndGet();
+            case "LIMITED" -> counter.limited.incrementAndGet();
+            case "OPERATOR" -> counter.disabled.incrementAndGet();
+            default -> counter.consumerFailures.incrementAndGet();
+        }
+        counter.lastStatus.set(status);
+        counter.lastAt = at;
+        if (runtime.callers.size() <= CALLER_LIMIT) {
+            return;
+        }
+        runtime.callers.entrySet().stream()
+                .min(Comparator.comparing(entry -> entry.getValue().lastAt))
+                .filter(oldest -> !oldest.getKey().equals(caller))
+                .ifPresent(oldest -> runtime.callers.remove(oldest.getKey(), oldest.getValue()));
+    }
+
+    private static String pathSegment(String path) {
+        if (path == null || !path.startsWith("/api/")) {
+            return null;
+        }
+        String rest = path.substring("/api/".length());
+        int slash = rest.indexOf('/');
+        String id = (slash < 0 ? rest : rest.substring(0, slash)).toLowerCase();
+        if (id.isBlank() || "console".equals(id)) {
+            return null;
+        }
+        return id;
+    }
+
+    private static String normalizeId(String id) {
+        if (id == null || !id.matches("[a-z][a-z0-9-]{1,30}")) {
+            throw new IllegalArgumentException("invalid_id");
+        }
+        if (RESERVED.contains(id)) {
+            throw new IllegalArgumentException("reserved_id");
+        }
+        return id;
+    }
+
+    private static String validateBackend(String backend) {
+        if (backend == null || backend.isBlank()) {
+            throw new IllegalArgumentException("invalid_backend");
+        }
+        java.net.URI uri;
+        try {
+            uri = java.net.URI.create(backend.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("invalid_backend");
+        }
+        String scheme = uri.getScheme();
+        if (uri.getHost() == null || uri.getUserInfo() != null || scheme == null
+                || !(scheme.equals("http") || scheme.equals("https"))) {
+            throw new IllegalArgumentException("invalid_backend");
+        }
+        return trimSlash(uri.toString());
+    }
+
+    private static String validateScope(String scope) {
+        if (!"orders.read".equals(scope) && !"customers.read".equals(scope)) {
+            throw new IllegalArgumentException("invalid_scope");
+        }
+        return scope;
+    }
+
+    private static void validateRates(int replenish, int burst) {
+        if (replenish < 1 || replenish > 1000 || burst < 1 || burst > 5000) {
+            throw new IllegalArgumentException("rate_out_of_range");
+        }
+        if (burst < replenish) {
+            throw new IllegalArgumentException("burst_below_rate");
+        }
+    }
+
+    private static String trimSlash(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
     }
 
     private String circuitState(String serviceId) {
@@ -213,7 +430,26 @@ public class RouteGovernance {
             long failed,
             long disabledHits,
             int transitions,
-            String circuit) {
+            String circuit,
+            boolean system,
+            String backend,
+            String scope,
+            String outage) {
+    }
+
+    public record CallerUsage(
+            String caller,
+            String serviceId,
+            long succeeded,
+            long consumerFailures,
+            long providerFailures,
+            long limited,
+            long disabled,
+            int lastStatus,
+            String lastAt) {
+    }
+
+    public record CallEvent(String at, String caller, String serviceId, int status, String side) {
     }
 
     public record ActivityEvent(String at, String serviceId, String kind, String detail) {
@@ -222,6 +458,9 @@ public class RouteGovernance {
     private static final class ServiceRuntime {
         private final String id;
         private final boolean controllable;
+        private final boolean system;
+        private volatile String backend;
+        private volatile String scope;
         private final AtomicInteger replenish;
         private final AtomicInteger burst;
         private final java.util.concurrent.atomic.AtomicBoolean enabled = new java.util.concurrent.atomic.AtomicBoolean(true);
@@ -233,14 +472,49 @@ public class RouteGovernance {
         private final AtomicLong disabledHits = new AtomicLong();
         private final AtomicInteger transitions = new AtomicInteger();
         private final ConcurrentLinkedDeque<ActivityEvent> events = new ConcurrentLinkedDeque<>();
+        private final Map<String, CallerCounter> callers = new ConcurrentHashMap<>();
         private String connectivity = "UNKNOWN";
         private String since = "";
+        private volatile int lastStatus;
+        private volatile String lastSide = "";
 
-        private ServiceRuntime(String id, boolean controllable, int replenish, int burst) {
+        private ServiceRuntime(
+                String id, boolean controllable, boolean system, String backend, String scope, int replenish, int burst) {
             this.id = id;
             this.controllable = controllable;
+            this.system = system;
+            this.backend = backend;
+            this.scope = scope;
             this.replenish = new AtomicInteger(replenish);
             this.burst = new AtomicInteger(burst);
+        }
+    }
+
+    private static final class CallerCounter {
+        private final String caller;
+        private final AtomicLong succeeded = new AtomicLong();
+        private final AtomicLong consumerFailures = new AtomicLong();
+        private final AtomicLong providerFailures = new AtomicLong();
+        private final AtomicLong limited = new AtomicLong();
+        private final AtomicLong disabled = new AtomicLong();
+        private final AtomicInteger lastStatus = new AtomicInteger();
+        private volatile String lastAt = "";
+
+        private CallerCounter(String caller) {
+            this.caller = caller;
+        }
+
+        private CallerUsage view(String serviceId) {
+            return new CallerUsage(
+                    caller,
+                    serviceId,
+                    succeeded.get(),
+                    consumerFailures.get(),
+                    providerFailures.get(),
+                    limited.get(),
+                    disabled.get(),
+                    lastStatus.get(),
+                    lastAt);
         }
     }
 }

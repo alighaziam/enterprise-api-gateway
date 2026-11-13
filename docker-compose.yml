@@ -1,9 +1,9 @@
+name: enterprise-api-gateway
+
 services:
   redis:
-    image: redis:7.4-alpine
+    image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -13,23 +13,29 @@ services:
       retries: 5
 
   orders-mock:
-    image: wiremock/wiremock:3.13.1
-    command: ["--global-response-templating"]
+    image: python:3.12-slim
+    environment:
+      MOCK_SERVICE: orders
     volumes:
-      - ./docker/wiremock/orders:/home/wiremock
+      - ./docker/mock/server.py:/mock/server.py:ro
+    command: ["python", "/mock/server.py"]
     ports:
       - "8081:8080"
 
   customers-mock:
-    image: wiremock/wiremock:3.13.1
-    command: ["--global-response-templating"]
+    image: python:3.12-slim
+    environment:
+      MOCK_SERVICE: customers
     volumes:
-      - ./docker/wiremock/customers:/home/wiremock
+      - ./docker/mock/server.py:/mock/server.py:ro
+    command: ["python", "/mock/server.py"]
     ports:
       - "8082:8080"
 
   gateway:
-    build: .
+    build:
+      context: .
+      dockerfile: ${GATEWAY_DOCKERFILE:-Dockerfile}
     image: enterprise-api-gateway:local
     depends_on:
       redis:
@@ -41,9 +47,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "8080:8080"
+      - "${GATEWAY_PORT:-8080}:8080"
     environment:
       REDIS_HOST: redis
+      LOCAL_DEV_TOKENS: ${LOCAL_DEV_TOKENS:-false}
       WSO2_ISSUER_URI: ${WSO2_ISSUER_URI:-https://host.docker.internal:9443/oauth2/token}
       WSO2_REQUIRED_AUDIENCE: ${WSO2_REQUIRED_AUDIENCE:-}
       WSO2_JWKS_URI: ${WSO2_JWKS_URI:-https://host.docker.internal:9443/oauth2/jwks}
@@ -54,6 +61,7 @@ services:
       ORDERS_RATE_LIMIT_BURST: ${ORDERS_RATE_LIMIT_BURST:-40}
       CUSTOMERS_RATE_LIMIT_REPLENISH: ${CUSTOMERS_RATE_LIMIT_REPLENISH:-30}
       CUSTOMERS_RATE_LIMIT_BURST: ${CUSTOMERS_RATE_LIMIT_BURST:-60}
+    restart: unless-stopped
 
 volumes:
   redis-data:

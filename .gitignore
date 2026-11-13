@@ -26,3 +26,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Linux JDK used only when Docker Hub cannot supply a Java 21 image
+docker/jre/*.tar.gz

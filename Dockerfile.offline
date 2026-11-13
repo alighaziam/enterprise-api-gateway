@@ -1,0 +1,13 @@
+FROM ubuntu:24.04
+COPY docker/jre/openjdk-21.0.2_linux-x64_bin.tar.gz /tmp/jdk.tar.gz
+RUN tar -xzf /tmp/jdk.tar.gz -C /opt --strip-components=1 --one-top-level=java \
+    && rm /tmp/jdk.tar.gz
+ENV JAVA_HOME=/opt/java
+ENV PATH="/opt/java/bin:${PATH}"
+WORKDIR /app
+RUN groupadd --system gateway && useradd --system --gid gateway --uid 10001 gateway
+COPY --chown=gateway:gateway target/enterprise-api-gateway-0.1.0-SNAPSHOT.jar /app/app.jar
+USER 10001:gateway
+EXPOSE 8080
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0"
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]
