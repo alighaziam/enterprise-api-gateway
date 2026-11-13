@@ -142,6 +142,7 @@ class GatewayScenarioTest {
         @Test
         void consoleStatusRequiresGatewayAdminScope() {
             client.get().uri("/api/console/status")
+                    .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                     .exchange()
                     .expectStatus().isUnauthorized();
 
@@ -338,6 +339,7 @@ class GatewayScenarioTest {
                         .value(body -> assertThat(body).contains("service_disabled"));
             } finally {
                 client.post().uri("/api/console/routes/orders")
+                        .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .bodyValue(java.util.Map.of("enabled", true))
                         .exchange()
@@ -354,6 +356,7 @@ class GatewayScenarioTest {
         void operatorCanTightenTheOrdersRateLimit() {
             try {
                 client.post().uri("/api/console/routes/orders")
+                        .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .bodyValue(java.util.Map.of("replenishPerSecond", 1, "burst", 1))
                         .exchange()
@@ -376,6 +379,7 @@ class GatewayScenarioTest {
                 assertThat(statuses).containsExactly(200, 429);
             } finally {
                 client.post().uri("/api/console/routes/orders")
+                        .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .bodyValue(java.util.Map.of("replenishPerSecond", 1, "burst", 2))
                         .exchange()
@@ -454,6 +458,7 @@ class GatewayScenarioTest {
                     .expectStatus().isForbidden();
 
             client.get().uri("/api/console/status")
+                    .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                     .exchange()
                     .expectStatus().isOk()
                     .expectBody()
