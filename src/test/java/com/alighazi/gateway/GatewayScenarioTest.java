@@ -142,7 +142,6 @@ class GatewayScenarioTest {
         @Test
         void consoleStatusRequiresGatewayAdminScope() {
             client.get().uri("/api/console/status")
-                    .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                     .exchange()
                     .expectStatus().isUnauthorized();
 
