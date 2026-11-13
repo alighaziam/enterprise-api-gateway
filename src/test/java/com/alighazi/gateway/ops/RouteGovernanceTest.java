@@ -74,7 +74,7 @@ class RouteGovernanceTest {
         List<String> applied = new ArrayList<>();
         RouteGovernance governance = new RouteGovernance(
                 (routeId, replenish, burst) -> applied.add(routeId + ":" + replenish + ":" + burst),
-                emptyBreakers(), 20, 40, 30, 60, "http://localhost:8081", "http://localhost:8082", "orders-service,customers-service,billing-service");
+                emptyBreakers(), 20, 40, 30, 60, "http://localhost:8081", "http://localhost:8082", "orders-service,customers-service,billing-service", false);
 
         RouteGovernance.ServiceOperations updated = governance.update("orders", false, 5, 9);
 
@@ -140,7 +140,7 @@ class RouteGovernanceTest {
 
     private static RouteGovernance governance() {
         return new RouteGovernance((routeId, replenish, burst) -> { }, emptyBreakers(), 20, 40, 30, 60,
-                "http://localhost:8081", "http://localhost:8082", "orders-service,customers-service");
+                "http://localhost:8081", "http://localhost:8082", "orders-service,customers-service,billing-service", false);
     }
 
     @SuppressWarnings("unchecked")
