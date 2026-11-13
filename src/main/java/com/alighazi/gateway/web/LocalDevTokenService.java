@@ -25,7 +25,7 @@ import com.nimbusds.jwt.SignedJWT;
 @Service
 public class LocalDevTokenService {
 
-    static final List<String> ALLOWED_SCOPES = List.of("orders.read", "customers.read");
+    static final List<String> ALLOWED_SCOPES = List.of("orders.read", "customers.read", "gateway.admin");
     private static final Duration TTL = Duration.ofMinutes(15);
 
     private final RSAKey signingKey;
