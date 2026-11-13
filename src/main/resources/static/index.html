@@ -1254,10 +1254,17 @@
       return t()[key];
     }
 
+    function consoleHeaders(extra = {}) {
+      const headers = { "Accept": "application/json", ...extra };
+      const value = tokenInput.value.trim();
+      if (value) headers.Authorization = value.toLowerCase().startsWith("bearer ") ? value : "Bearer " + value;
+      return headers;
+    }
+
     async function updateRoute(id, body) {
       const response = await fetch("/api/console/routes/" + encodeURIComponent(id), {
         method: "POST",
-        headers: { "Accept": "application/json", "Content-Type": "application/json" },
+        headers: consoleHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(body)
       });
       const payload = await response.json().catch(() => ({}));
@@ -1281,7 +1288,7 @@
       const button = document.querySelector("#refresh");
       button.disabled = true;
       try {
-        const response = await fetch("/api/console/status", { headers: { "Accept": "application/json" } });
+        const response = await fetch("/api/console/status", { headers: consoleHeaders() });
         if (!response.ok) throw new Error(String(response.status));
         latestSnapshot = await response.json();
         const ctx = latestSnapshot.context;
@@ -1663,7 +1670,7 @@
 
     async function deleteService(id) {
       if (!window.confirm(t().confirmDelete.replace("{id}", id))) return;
-      const response = await fetch("/api/console/routes/" + encodeURIComponent(id), { method: "DELETE" });
+      const response = await fetch("/api/console/routes/" + encodeURIComponent(id), { method: "DELETE", headers: consoleHeaders() });
       if (!response.ok && response.status !== 204) {
         const payload = await response.json().catch(() => ({}));
         window.alert(routeError(payload));
