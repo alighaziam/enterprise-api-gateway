@@ -28,6 +28,7 @@ public class RouteGovernance {
 
     private final LiveRateLimit rateLimit;
     private final ObjectProvider<CircuitBreakerRegistry> breakers;
+    private final java.util.Set<String> allowedBackendHosts;
     private final Map<String, ServiceRuntime> services = new ConcurrentHashMap<>();
     private final ConcurrentLinkedDeque<CallEvent> calls = new ConcurrentLinkedDeque<>();
 
@@ -39,9 +40,14 @@ public class RouteGovernance {
             @Value("${CUSTOMERS_RATE_LIMIT_REPLENISH:30}") int customersReplenish,
             @Value("${CUSTOMERS_RATE_LIMIT_BURST:60}") int customersBurst,
             @Value("${ORDERS_SERVICE_URI:http://localhost:8081}") String ordersUri,
-            @Value("${CUSTOMERS_SERVICE_URI:http://localhost:8082}") String customersUri) {
+            @Value("${CUSTOMERS_SERVICE_URI:http://localhost:8082}") String customersUri,
+            @Value("${GATEWAY_ROUTE_ALLOWED_HOSTS:orders-service,customers-service}") String allowedHosts) {
         this.rateLimit = rateLimit;
         this.breakers = breakers;
+        this.allowedBackendHosts = java.util.Arrays.stream(allowedHosts.split(","))
+                .map(String::trim).filter(host -> !host.isEmpty())
+                .map(host -> host.toLowerCase(java.util.Locale.ROOT))
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
         services.put("gateway", new ServiceRuntime("gateway", false, true, "", "", 0, 0));
         services.put("redis", new ServiceRuntime("redis", false, true, "", "", 0, 0));
         services.put("orders", new ServiceRuntime("orders", true, true, trimSlash(ordersUri), "orders.read", ordersReplenish, ordersBurst));
@@ -345,7 +351,7 @@ public class RouteGovernance {
         return id;
     }
 
-    private static String validateBackend(String backend) {
+    private String validateBackend(String backend) {
         if (backend == null || backend.isBlank()) {
             throw new IllegalArgumentException("invalid_backend");
         }
@@ -356,9 +362,18 @@ public class RouteGovernance {
             throw new IllegalArgumentException("invalid_backend");
         }
         String scheme = uri.getScheme();
-        if (uri.getHost() == null || uri.getUserInfo() != null || scheme == null
-                || !(scheme.equals("http") || scheme.equals("https"))) {
+        String host = uri.getHost();
+        if (host == null || uri.getUserInfo() != null || uri.getRawFragment() != null
+                || scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
             throw new IllegalArgumentException("invalid_backend");
+        }
+        String normalizedHost = host.toLowerCase(java.util.Locale.ROOT);
+        // Literal IPs, loopback, link-local and metadata endpoints are never valid route targets.
+        if (normalizedHost.matches("[0-9.]+") || normalizedHost.contains(":")
+                || normalizedHost.equals("localhost") || normalizedHost.endsWith(".localhost")
+                || normalizedHost.endsWith(".local") || normalizedHost.endsWith(".internal")
+                || !allowedBackendHosts.contains(normalizedHost)) {
+            throw new IllegalArgumentException("backend_host_not_allowed");
         }
         return trimSlash(uri.toString());
     }
