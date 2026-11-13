@@ -62,6 +62,7 @@ security:
 
 local-dev:
   tokens-enabled: ${LOCAL_DEV_TOKENS:false}
+  token-secret: ${LOCAL_DEV_TOKEN_SECRET:}
 
 management:
   endpoints:
