@@ -614,6 +614,8 @@
         reservedId: "این شناسه رزرو شده است.",
         duplicateService: "این شناسه از قبل وجود دارد.",
         invalidBackend: "آدرس پشتیبان باید یک نشانی http یا https با میزبان باشد.",
+        hostNotAllowed: "این میزبان در فهرست مجاز مسیرها نیست. فقط نام‌های داخلی تأییدشده پذیرفته می‌شوند.",
+        backendHint: "میزبان پشتیبان باید دقیقاً در فهرست مجاز باشد. نشانی IP، localhost و نام‌های دلخواه رد می‌شوند.",
         invalidScope: "اسکوپ فقط orders.read یا customers.read است.",
         systemService: "سرویس سیستمی حذف نمی‌شود و آدرسش عوض نمی‌شود.",
         insightTitle: "اتصال و فراخوانی",
@@ -764,6 +766,8 @@
         reservedId: "This id is reserved.",
         duplicateService: "This id already exists.",
         invalidBackend: "The backend must be an http or https address with a host.",
+        hostNotAllowed: "This host is not on the route allowlist. Only approved internal names are accepted.",
+        backendHint: "The backend host must match the allowlist exactly. IP addresses, localhost, and arbitrary names are rejected.",
         invalidScope: "The scope can only be orders.read or customers.read.",
         systemService: "A system service cannot be deleted and its address cannot change.",
         insightTitle: "Connections and calls",
@@ -1252,6 +1256,7 @@
         reserved_id: "reservedId",
         duplicate_service: "duplicateService",
         invalid_backend: "invalidBackend",
+        backend_host_not_allowed: "hostNotAllowed",
         invalid_scope: "invalidScope",
         system_service: "systemService"
       }[payload.error] || "saveFail";
@@ -1634,7 +1639,7 @@
       form.burst.value = op ? op.burst : 20;
       form.enabled.checked = op ? op.enabled : true;
       document.querySelector("#dialog-title").textContent = op ? t().editService : t().createService;
-      document.querySelector("#dialog-note").textContent = op && op.system ? t().systemLocked : "";
+      document.querySelector("#dialog-note").textContent = op && op.system ? t().systemLocked : t().backendHint;
       document.querySelector("#service-dialog").showModal();
     }
 
