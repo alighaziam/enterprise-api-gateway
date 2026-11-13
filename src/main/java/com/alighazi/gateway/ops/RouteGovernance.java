@@ -42,7 +42,7 @@ public class RouteGovernance {
             @Value("${CUSTOMERS_RATE_LIMIT_BURST:60}") int customersBurst,
             @Value("${ORDERS_SERVICE_URI:http://localhost:8081}") String ordersUri,
             @Value("${CUSTOMERS_SERVICE_URI:http://localhost:8082}") String customersUri,
-            @Value("${GATEWAY_ROUTE_ALLOWED_HOSTS:orders-service,customers-service}") String allowedHosts,
+            @Value("${GATEWAY_ROUTE_ALLOWED_HOSTS:orders-mock,customers-mock}") String allowedHosts,
             @Value("${GATEWAY_ROUTE_ALLOW_LOOPBACK:false}") boolean allowLoopbackBackend) {
         this.rateLimit = rateLimit;
         this.breakers = breakers;
