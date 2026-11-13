@@ -74,7 +74,7 @@ class RouteGovernanceTest {
         List<String> applied = new ArrayList<>();
         RouteGovernance governance = new RouteGovernance(
                 (routeId, replenish, burst) -> applied.add(routeId + ":" + replenish + ":" + burst),
-                emptyBreakers(), 20, 40, 30, 60, "http://localhost:8081", "http://localhost:8082");
+                emptyBreakers(), 20, 40, 30, 60, "http://localhost:8081", "http://localhost:8082", "orders-service,customers-service,billing-service", false);
 
         RouteGovernance.ServiceOperations updated = governance.update("orders", false, 5, 9);
 
@@ -92,10 +92,10 @@ class RouteGovernanceTest {
         RouteGovernance governance = governance();
 
         RouteGovernance.ServiceOperations created = governance.create(
-                "billing", "http://127.0.0.1:8081", "orders.read", 5, 8, true);
+                "billing", "http://billing-service:8081", "orders.read", 5, 8, true);
 
         assertThat(created.system()).isFalse();
-        assertThat(created.backend()).isEqualTo("http://127.0.0.1:8081");
+        assertThat(created.backend()).isEqualTo("http://billing-service:8081");
         assertThat(governance.resolve("/api/billing/77")).isEqualTo("billing");
         assertThat(governance.operations()).extracting(RouteGovernance.ServiceOperations::id)
                 .contains("orders", "customers", "billing");
@@ -104,9 +104,26 @@ class RouteGovernanceTest {
         assertThat(governance.resolve("/api/billing/77")).isNull();
         assertThatThrownBy(() -> governance.delete("orders")).isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("system_service");
-        assertThatThrownBy(() -> governance.create("orders", "http://127.0.0.1:9", "orders.read", 1, 1, true))
+        assertThatThrownBy(() -> governance.create("orders", "http://orders-service:9", "orders.read", 1, 1, true))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("reserved_id");
+    }
+
+    @Test
+    void rejectsPrivateIpAndUnapprovedBackendHosts() {
+        RouteGovernance governance = governance();
+        assertThatThrownBy(() -> governance.create(
+                "billing", "http://127.0.0.1:8081", "orders.read", 5, 8, true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("backend_host_not_allowed");
+        assertThatThrownBy(() -> governance.create(
+                "billing", "http://169.254.169.254/latest/meta-data", "orders.read", 5, 8, true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("backend_host_not_allowed");
+        assertThatThrownBy(() -> governance.create(
+                "billing", "http://attacker.example:8081", "orders.read", 5, 8, true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("backend_host_not_allowed");
+        assertThatThrownBy(() -> governance.create(
+                "billing", "http://user:pass@orders-service:8081", "orders.read", 5, 8, true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("invalid_backend");
     }
 
     @Test
@@ -123,7 +140,7 @@ class RouteGovernanceTest {
 
     private static RouteGovernance governance() {
         return new RouteGovernance((routeId, replenish, burst) -> { }, emptyBreakers(), 20, 40, 30, 60,
-                "http://localhost:8081", "http://localhost:8082");
+                "http://localhost:8081", "http://localhost:8082", "orders-service,customers-service,billing-service", false);
     }
 
     @SuppressWarnings("unchecked")

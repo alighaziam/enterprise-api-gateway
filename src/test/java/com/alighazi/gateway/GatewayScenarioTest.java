@@ -61,6 +61,8 @@ class GatewayScenarioTest {
         registry.add("WSO2_REQUIRED_AUDIENCE", () -> AUDIENCE);
         registry.add("ORDERS_SERVICE_URI", () -> base(ordersServer));
         registry.add("CUSTOMERS_SERVICE_URI", () -> base(customersServer));
+        registry.add("GATEWAY_ROUTE_ALLOWED_HOSTS", () -> "orders-service,customers-service");
+        registry.add("GATEWAY_ROUTE_ALLOW_LOOPBACK", () -> "true");
         registry.add("REDIS_HOST", () -> "127.0.0.1");
         registry.add("REDIS_PORT", () -> "6379");
         registry.add("local-dev.tokens-enabled", () -> "false");

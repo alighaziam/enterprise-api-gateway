@@ -166,3 +166,8 @@ This repository provides an implementation baseline, not a claim of production c
 ## License
 
 To be decided.
+
+
+### Dynamic route target allowlist
+
+Dynamic route destinations are restricted by exact hostname using `GATEWAY_ROUTE_ALLOWED_HOSTS` (comma-separated). The Compose default allows only the internal `orders-mock` and `customers-mock` DNS names; production deployments should explicitly configure their own internal service DNS names. IP literals, localhost, link-local/local/internal suffixes, user-info and unapproved hosts are rejected. Do not add arbitrary or user-controlled hostnames to this list. The allowlist is an application-layer control; production network egress policy must independently deny loopback, RFC1918/link-local ranges and cloud metadata addresses to defend against DNS rebinding and compromised DNS.
