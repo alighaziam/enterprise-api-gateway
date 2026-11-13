@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 
 import com.alighazi.gateway.web.LocalDevTokenService.DevToken;
 
@@ -34,7 +35,14 @@ public class LocalDevTokenController {
     }
 
     @GetMapping(value = "/api/console/token", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> token(@RequestParam(name = "scope", defaultValue = "orders.read customers.read") String scope) {
+    public ResponseEntity<?> token(
+            @RequestParam(name = "scope", defaultValue = "orders.read customers.read gateway.admin") String scope,
+            ServerHttpRequest request) {
+        var remote = request.getRemoteAddress();
+        if (remote == null || remote.getAddress() == null || !remote.getAddress().isLoopbackAddress()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Local development tokens can only be issued from loopback clients"));
+        }
         if (!enabled) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Local development tokens are disabled"));
