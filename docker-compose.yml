@@ -20,7 +20,7 @@ services:
       - ./docker/mock/server.py:/mock/server.py:ro
     command: ["python", "/mock/server.py"]
     ports:
-      - "8081:8080"
+      - "127.0.0.1:8081:8080"
 
   customers-mock:
     image: python:3.12-slim
@@ -30,7 +30,7 @@ services:
       - ./docker/mock/server.py:/mock/server.py:ro
     command: ["python", "/mock/server.py"]
     ports:
-      - "8082:8080"
+      - "127.0.0.1:8082:8080"
 
   gateway:
     build:
@@ -47,10 +47,11 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "${GATEWAY_PORT:-8080}:8080"
+      - "127.0.0.1:${GATEWAY_PORT:-8080}:8080"
     environment:
       REDIS_HOST: redis
       LOCAL_DEV_TOKENS: ${LOCAL_DEV_TOKENS:-false}
+      LOCAL_DEV_TOKEN_SECRET: ${LOCAL_DEV_TOKEN_SECRET:-}
       WSO2_ISSUER_URI: ${WSO2_ISSUER_URI:-https://host.docker.internal:9443/oauth2/token}
       WSO2_REQUIRED_AUDIENCE: ${WSO2_REQUIRED_AUDIENCE:-}
       WSO2_JWKS_URI: ${WSO2_JWKS_URI:-https://host.docker.internal:9443/oauth2/jwks}

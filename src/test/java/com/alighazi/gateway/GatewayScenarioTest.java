@@ -140,8 +140,21 @@ class GatewayScenarioTest {
         }
 
         @Test
+        void consoleStatusRequiresGatewayAdminScope() {
+            client.get().uri("/api/console/status")
+                    .exchange()
+                    .expectStatus().isUnauthorized();
+
+            client.get().uri("/api/console/status")
+                    .header(HttpHeaders.AUTHORIZATION, bearer(readToken("read-only")))
+                    .exchange()
+                    .expectStatus().isForbidden();
+        }
+
+        @Test
         void consoleStatusReportsLiveDependencies() {
             client.get().uri("/api/console/status")
+                    .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                     .exchange()
                     .expectStatus().isOk()
                     .expectBody()
@@ -309,6 +322,7 @@ class GatewayScenarioTest {
         void operatorCanDisableAndRestoreOrders() {
             try {
                 client.post().uri("/api/console/routes/orders")
+                        .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .bodyValue(java.util.Map.of("enabled", false))
                         .exchange()
@@ -324,6 +338,7 @@ class GatewayScenarioTest {
                         .value(body -> assertThat(body).contains("service_disabled"));
             } finally {
                 client.post().uri("/api/console/routes/orders")
+                        .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .bodyValue(java.util.Map.of("enabled", true))
                         .exchange()
@@ -340,6 +355,7 @@ class GatewayScenarioTest {
         void operatorCanTightenTheOrdersRateLimit() {
             try {
                 client.post().uri("/api/console/routes/orders")
+                        .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .bodyValue(java.util.Map.of("replenishPerSecond", 1, "burst", 1))
                         .exchange()
@@ -362,6 +378,7 @@ class GatewayScenarioTest {
                 assertThat(statuses).containsExactly(200, 429);
             } finally {
                 client.post().uri("/api/console/routes/orders")
+                        .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .bodyValue(java.util.Map.of("replenishPerSecond", 1, "burst", 2))
                         .exchange()
@@ -374,6 +391,7 @@ class GatewayScenarioTest {
             String id = "billing";
             try {
                 client.post().uri("/api/console/routes")
+                        .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .bodyValue(java.util.Map.of(
                                 "id", id,
@@ -408,12 +426,14 @@ class GatewayScenarioTest {
                 assertThat(body).contains("\"path\":\"/77\"");
 
                 client.delete().uri("/api/console/routes/orders")
+                        .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                         .exchange()
                         .expectStatus().isBadRequest()
                         .expectBody()
                         .jsonPath("$.error").isEqualTo("system_service");
             } finally {
                 client.delete().uri("/api/console/routes/" + id)
+                        .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                         .exchange()
                         .expectStatus().isNoContent();
             }
@@ -437,6 +457,7 @@ class GatewayScenarioTest {
                     .expectStatus().isForbidden();
 
             client.get().uri("/api/console/status")
+                    .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
                     .exchange()
                     .expectStatus().isOk()
                     .expectBody()
@@ -446,6 +467,10 @@ class GatewayScenarioTest {
                     .jsonPath("$.calls[0].caller").isEqualTo(subject)
                     .jsonPath("$.calls[0].side").isEqualTo("CONSUMER");
         }
+    }
+
+    private String adminAuthorization() {
+        return bearer(token("gateway-operator", "gateway.admin", AUDIENCE, ISSUER, Instant.now().plusSeconds(300)));
     }
 
     private String readToken(String subject) {

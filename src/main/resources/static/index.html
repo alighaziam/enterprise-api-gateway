@@ -471,6 +471,10 @@
           </label>
           <p class="preview" id="preview"></p>
           <div class="claims" id="claims" hidden></div>
+          <label>
+            <span>رمز محلی صدور توکن / Local token-minting secret</span>
+            <input id="local-token-secret" type="password" dir="ltr" autocomplete="off" spellcheck="false">
+          </label>
           <button type="submit" id="send" data-i18n="send">ارسال از دروازه</button>
           <button class="ghost" id="demo" type="button" data-i18n="demo">توکن آزمایشی و ارسال</button>
         </form>
@@ -1254,10 +1258,17 @@
       return t()[key];
     }
 
+    function consoleHeaders(extra = {}) {
+      const headers = { "Accept": "application/json", ...extra };
+      const value = tokenInput.value.trim();
+      if (value) headers.Authorization = value.toLowerCase().startsWith("bearer ") ? value : "Bearer " + value;
+      return headers;
+    }
+
     async function updateRoute(id, body) {
       const response = await fetch("/api/console/routes/" + encodeURIComponent(id), {
         method: "POST",
-        headers: { "Accept": "application/json", "Content-Type": "application/json" },
+        headers: consoleHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(body)
       });
       const payload = await response.json().catch(() => ({}));
@@ -1281,7 +1292,7 @@
       const button = document.querySelector("#refresh");
       button.disabled = true;
       try {
-        const response = await fetch("/api/console/status", { headers: { "Accept": "application/json" } });
+        const response = await fetch("/api/console/status", { headers: consoleHeaders() });
         if (!response.ok) throw new Error(String(response.status));
         latestSnapshot = await response.json();
         const ctx = latestSnapshot.context;
@@ -1480,10 +1491,14 @@
         showLocal("—", "pickScope");
         return;
       }
+      scopes.push("gateway.admin");
       setBusy(true);
       try {
         const response = await fetch("/api/console/token?scope=" + encodeURIComponent(scopes.join(" ")), {
-          headers: { "Accept": "application/json" }
+          headers: {
+            "Accept": "application/json",
+            "X-Local-Token-Secret": document.querySelector("#local-token-secret").value
+          }
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
@@ -1646,7 +1661,7 @@
       try {
         const response = await fetch(editingId ? "/api/console/routes/" + encodeURIComponent(editingId) : "/api/console/routes", {
           method: "POST",
-          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          headers: consoleHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify(editingId ? body : { ...body, id: form.id.value.trim() })
         });
         const payload = await response.json().catch(() => ({}));
@@ -1663,7 +1678,7 @@
 
     async function deleteService(id) {
       if (!window.confirm(t().confirmDelete.replace("{id}", id))) return;
-      const response = await fetch("/api/console/routes/" + encodeURIComponent(id), { method: "DELETE" });
+      const response = await fetch("/api/console/routes/" + encodeURIComponent(id), { method: "DELETE", headers: consoleHeaders() });
       if (!response.ok && response.status !== 204) {
         const payload = await response.json().catch(() => ({}));
         window.alert(routeError(payload));
