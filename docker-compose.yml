@@ -52,7 +52,6 @@ services:
       REDIS_HOST: redis
       LOCAL_DEV_TOKENS: ${LOCAL_DEV_TOKENS:-false}
       LOCAL_DEV_TOKEN_SECRET: ${LOCAL_DEV_TOKEN_SECRET:-}
-      GATEWAY_ROUTE_ALLOWED_HOSTS: ${GATEWAY_ROUTE_ALLOWED_HOSTS:-orders-service,customers-service}
       WSO2_ISSUER_URI: ${WSO2_ISSUER_URI:-https://host.docker.internal:9443/oauth2/token}
       WSO2_REQUIRED_AUDIENCE: ${WSO2_REQUIRED_AUDIENCE:-}
       WSO2_JWKS_URI: ${WSO2_JWKS_URI:-https://host.docker.internal:9443/oauth2/jwks}
