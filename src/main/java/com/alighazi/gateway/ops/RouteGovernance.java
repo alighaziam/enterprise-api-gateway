@@ -29,6 +29,7 @@ public class RouteGovernance {
     private final LiveRateLimit rateLimit;
     private final ObjectProvider<CircuitBreakerRegistry> breakers;
     private final java.util.Set<String> allowedBackendHosts;
+    private final boolean allowLoopbackBackend;
     private final Map<String, ServiceRuntime> services = new ConcurrentHashMap<>();
     private final ConcurrentLinkedDeque<CallEvent> calls = new ConcurrentLinkedDeque<>();
 
@@ -41,9 +42,11 @@ public class RouteGovernance {
             @Value("${CUSTOMERS_RATE_LIMIT_BURST:60}") int customersBurst,
             @Value("${ORDERS_SERVICE_URI:http://localhost:8081}") String ordersUri,
             @Value("${CUSTOMERS_SERVICE_URI:http://localhost:8082}") String customersUri,
-            @Value("${GATEWAY_ROUTE_ALLOWED_HOSTS:orders-service,customers-service}") String allowedHosts) {
+            @Value("${GATEWAY_ROUTE_ALLOWED_HOSTS:orders-service,customers-service}") String allowedHosts,
+            @Value("${GATEWAY_ROUTE_ALLOW_LOOPBACK:false}") boolean allowLoopbackBackend) {
         this.rateLimit = rateLimit;
         this.breakers = breakers;
+        this.allowLoopbackBackend = allowLoopbackBackend;
         this.allowedBackendHosts = java.util.Arrays.stream(allowedHosts.split(","))
                 .map(String::trim).filter(host -> !host.isEmpty())
                 .map(host -> host.toLowerCase(java.util.Locale.ROOT))
@@ -369,13 +372,25 @@ public class RouteGovernance {
         }
         String normalizedHost = host.toLowerCase(java.util.Locale.ROOT);
         // Literal IPs, loopback, link-local and metadata endpoints are never valid route targets.
-        if (normalizedHost.matches("[0-9.]+") || normalizedHost.contains(":")
-                || normalizedHost.equals("localhost") || normalizedHost.endsWith(".localhost")
+        boolean loopback = allowLoopbackBackend && isLoopbackHost(normalizedHost);
+        if ((normalizedHost.matches("[0-9.]+") || normalizedHost.contains(":")
+                || normalizedHost.equals("localhost") || normalizedHost.endsWith(".localhost")) && !loopback
                 || normalizedHost.endsWith(".local") || normalizedHost.endsWith(".internal")
-                || !allowedBackendHosts.contains(normalizedHost)) {
+                || (!loopback && !allowedBackendHosts.contains(normalizedHost))) {
             throw new IllegalArgumentException("backend_host_not_allowed");
         }
         return trimSlash(uri.toString());
+    }
+
+    private static boolean isLoopbackHost(String host) {
+        if (!host.equals("localhost") && !host.matches("[0-9.]+") && !host.contains(":")) {
+            return false;
+        }
+        try {
+            return java.net.InetAddress.getByName(host).isLoopbackAddress();
+        } catch (java.net.UnknownHostException exception) {
+            return false;
+        }
     }
 
     private static String validateScope(String scope) {
