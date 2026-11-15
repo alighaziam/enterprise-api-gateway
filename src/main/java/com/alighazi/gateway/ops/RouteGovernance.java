@@ -81,16 +81,22 @@ public class RouteGovernance {
 
     public ServiceOperations create(String id, String backend, String scope, int replenish, int burst, boolean enabled) {
         String normalized = normalizeId(id);
-        if (services.containsKey(normalized)) {
-            throw new IllegalArgumentException("duplicate_service");
-        }
         String cleanBackend = validateBackend(backend);
-        String cleanScope = validateScope(scope);
+        String cleanScope = validateScope(normalized, scope);
         validateRates(replenish, burst);
+
         ServiceRuntime runtime = new ServiceRuntime(normalized, true, false, cleanBackend, cleanScope, replenish, burst);
         runtime.enabled.set(enabled);
-        services.put(normalized, runtime);
-        rateLimit.apply(routeId(normalized), replenish, burst);
+        if (services.putIfAbsent(normalized, runtime) != null) {
+            throw new IllegalArgumentException("duplicate_service");
+        }
+        try {
+            rateLimit.apply(routeId(normalized), replenish, burst);
+        } catch (RuntimeException exception) {
+            services.remove(normalized, runtime);
+            rateLimit.remove(routeId(normalized));
+            throw exception;
+        }
         return view(runtime);
     }
 
@@ -102,7 +108,21 @@ public class RouteGovernance {
         if (runtime.system) {
             throw new IllegalArgumentException("system_service");
         }
-        services.remove(serviceId);
+        synchronized (runtime) {
+            if (services.get(serviceId) != runtime) {
+                throw new UnknownService();
+            }
+            rateLimit.remove(routeId(serviceId));
+            services.remove(serviceId, runtime);
+        }
+    }
+
+    public ServiceOperations operation(String serviceId) {
+        ServiceRuntime runtime = services.get(serviceId);
+        if (runtime == null || !runtime.controllable) {
+            throw new UnknownService();
+        }
+        return view(runtime);
     }
 
     public static String routeId(String serviceId) {
@@ -182,27 +202,28 @@ public class RouteGovernance {
         if (runtime == null || !runtime.controllable) {
             throw new UnknownService();
         }
-        if (runtime.system && (backend != null || scope != null)) {
-            throw new IllegalArgumentException("system_service");
-        }
-        int nextReplenish = replenishPerSecond == null ? runtime.replenish.get() : replenishPerSecond;
-        int nextBurst = burst == null ? runtime.burst.get() : burst;
-        validateRates(nextReplenish, nextBurst);
-        if (backend != null) {
-            runtime.backend = validateBackend(backend);
-        }
-        if (scope != null) {
-            runtime.scope = validateScope(scope);
-        }
-        if (replenishPerSecond != null || burst != null) {
+        synchronized (runtime) {
+            if (runtime.system && (backend != null || scope != null)) {
+                throw new IllegalArgumentException("system_service");
+            }
+
+            int nextReplenish = replenishPerSecond == null ? runtime.replenish.get() : replenishPerSecond;
+            int nextBurst = burst == null ? runtime.burst.get() : burst;
+            validateRates(nextReplenish, nextBurst);
+            String nextBackend = backend == null ? runtime.backend : validateBackend(backend);
+            String nextScope = scope == null ? runtime.scope : validateScope(serviceId, scope);
+
+            if (replenishPerSecond != null || burst != null) {
+                rateLimit.apply(routeId(serviceId), nextReplenish, nextBurst);
+            }
+
+            runtime.backend = nextBackend;
+            runtime.scope = nextScope;
             runtime.replenish.set(nextReplenish);
             runtime.burst.set(nextBurst);
-            rateLimit.apply(routeId(serviceId), nextReplenish, nextBurst);
-        }
-        if (enabled != null && runtime.enabled.get() != enabled) {
-            runtime.enabled.set(enabled);
-            String at = Instant.now().toString();
-            synchronized (runtime) {
+            if (enabled != null && runtime.enabled.get() != enabled) {
+                runtime.enabled.set(enabled);
+                String at = Instant.now().toString();
                 push(runtime, new ActivityEvent(at, serviceId, enabled ? "ENABLED" : "DISABLED", ""));
             }
         }
@@ -393,8 +414,8 @@ public class RouteGovernance {
         }
     }
 
-    private static String validateScope(String scope) {
-        if (!"orders.read".equals(scope) && !"customers.read".equals(scope)) {
+    private static String validateScope(String serviceId, String scope) {
+        if (serviceId == null || scope == null || !scope.equals(serviceId + ".read")) {
             throw new IllegalArgumentException("invalid_scope");
         }
         return scope;
@@ -417,7 +438,7 @@ public class RouteGovernance {
     }
 
     private String circuitState(String serviceId) {
-        if (!"orders".equals(serviceId) && !"customers".equals(serviceId)) {
+        if ("gateway".equals(serviceId) || "redis".equals(serviceId)) {
             return "UNKNOWN";
         }
         CircuitBreakerRegistry registry = breakers.getIfAvailable();
