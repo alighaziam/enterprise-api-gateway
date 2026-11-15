@@ -1,9 +1,11 @@
 package com.alighazi.gateway.filter;
 
-import java.security.Principal;
-
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
@@ -29,24 +31,29 @@ public class TrafficAccountingFilter implements WebFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        // Record after the response is committed, when Spring Security has
-        // completed authentication and exposed the verified Principal.
-        exchange.getResponse().beforeCommit(() -> {
-            HttpStatusCode status = exchange.getResponse().getStatusCode();
-            int code = status == null ? 0 : status.value();
-            boolean disabled = Boolean.TRUE.equals(exchange.getAttribute(RouteGovernance.DISABLED_ATTRIBUTE));
-
-            return exchange.getPrincipal()
-                    .map(Principal::getName)
-                    .map(TrafficAccountingFilter::normalizePrincipal)
-                    .defaultIfEmpty("anonymous")
-                    .doOnNext(caller -> governance.record(serviceId, code, disabled, caller))
-                    .onErrorResume(ex -> {
-                        governance.record(serviceId, code, disabled, "anonymous");
-                        return Mono.empty();
-                    })
-                    .then();
-        });
+        // The filter wraps Spring Security's chain, so read the verified
+        // Authentication from Reactor's security context at commit time.
+        exchange.getResponse().beforeCommit(() -> ReactiveSecurityContextHolder.getContext()
+                .map(SecurityContext::getAuthentication)
+                .filter(Authentication::isAuthenticated)
+                .filter(authentication -> !(authentication instanceof AnonymousAuthenticationToken))
+                .map(Authentication::getName)
+                .map(TrafficAccountingFilter::normalizePrincipal)
+                .defaultIfEmpty("anonymous")
+                .doOnNext(caller -> {
+                    HttpStatusCode status = exchange.getResponse().getStatusCode();
+                    int code = status == null ? 0 : status.value();
+                    boolean disabled = Boolean.TRUE.equals(exchange.getAttribute(RouteGovernance.DISABLED_ATTRIBUTE));
+                    governance.record(serviceId, code, disabled, caller);
+                })
+                .onErrorResume(ex -> {
+                    HttpStatusCode status = exchange.getResponse().getStatusCode();
+                    int code = status == null ? 0 : status.value();
+                    boolean disabled = Boolean.TRUE.equals(exchange.getAttribute(RouteGovernance.DISABLED_ATTRIBUTE));
+                    governance.record(serviceId, code, disabled, "anonymous");
+                    return Mono.empty();
+                })
+                .then());
         return chain.filter(exchange);
     }
 
