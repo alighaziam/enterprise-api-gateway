@@ -31,7 +31,7 @@ public class GatewayRoutePublisher {
         definition.setId(RouteGovernance.routeId(operation.id()));
         definition.setUri(URI.create(operation.backend()));
         definition.setPredicates(List.of(new PredicateDefinition("Path=/api/" + operation.id() + "/**")));
-        definition.setFilters(List.of(stripPrefix(), rateLimiter(operation)));
+        definition.setFilters(List.of(stripPrefix(), rateLimiter(operation), circuitBreaker(operation)));
         return writer.save(Mono.just(definition))
                 .doOnSuccess(ignored -> events.publishEvent(new RefreshRoutesEvent(this)));
     }
@@ -45,6 +45,14 @@ public class GatewayRoutePublisher {
         FilterDefinition filter = new FilterDefinition();
         filter.setName("StripPrefix");
         filter.addArg("parts", "2");
+        return filter;
+    }
+
+    private static FilterDefinition circuitBreaker(ServiceOperations operation) {
+        FilterDefinition filter = new FilterDefinition();
+        filter.setName("CircuitBreaker");
+        filter.addArg("name", operation.id() + "CircuitBreaker");
+        filter.addArg("fallbackUri", "forward:/fallback/" + operation.id());
         return filter;
     }
 
