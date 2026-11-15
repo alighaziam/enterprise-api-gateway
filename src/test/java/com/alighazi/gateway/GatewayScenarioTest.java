@@ -478,18 +478,13 @@ class GatewayScenarioTest {
                         .returnResult();
                 status = result.getStatus().value();
                 body = result.getResponseBody() == null ? "" : result.getResponseBody();
-                if (status == 200 && body.contains("\\"path\\":\\"/77\\"")) {
+                if (status == 200 && body.contains("\"path\":\"/77\"")) {
                     break;
                 }
-                try {
-                    Thread.sleep(200);
-                } catch (InterruptedException exception) {
-                    Thread.currentThread().interrupt();
-                    throw new IllegalStateException(exception);
-                }
+                Thread.sleep(200);
             }
             assertThat(status).isEqualTo(200);
-            assertThat(body).contains("\\"path\\":\\"/77\\"");
+            assertThat(body).contains("\"path\":\"/77\"");
             routeCatalog.delete(id).block();
         }
 
