@@ -14,14 +14,17 @@ public class RedisLiveRateLimit implements LiveRateLimit {
 
     @Override
     public void apply(String routeId, int replenishPerSecond, int burst) {
-        RedisRateLimiter.Config config = limiter.getConfig().get(routeId);
-        if (config == null) {
-            config = new RedisRateLimiter.Config();
-            limiter.getConfig().put(routeId, config);
-        }
-        int requestedTokens = Math.max(1, config.getRequestedTokens());
-        config.setReplenishRate(replenishPerSecond)
+        RedisRateLimiter.Config existing = limiter.getConfig().get(routeId);
+        int requestedTokens = existing == null ? 1 : Math.max(1, existing.getRequestedTokens());
+        RedisRateLimiter.Config updated = new RedisRateLimiter.Config()
+                .setReplenishRate(replenishPerSecond)
                 .setBurstCapacity(burst)
                 .setRequestedTokens(requestedTokens);
+        limiter.getConfig().put(routeId, updated);
+    }
+
+    @Override
+    public void remove(String routeId) {
+        limiter.getConfig().remove(routeId);
     }
 }
