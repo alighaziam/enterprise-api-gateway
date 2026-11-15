@@ -27,6 +27,7 @@ public class LocalDevTokenService {
 
     static final List<String> ALLOWED_SCOPES = List.of("orders.read", "customers.read", "gateway.admin");
     private static final Duration TTL = Duration.ofMinutes(15);
+    private static final Set<String> RESERVED_SERVICE_IDS = Set.of("gateway", "redis", "orders", "customers", "console");
 
     private final RSAKey signingKey;
     private final String issuer;
@@ -75,7 +76,7 @@ public class LocalDevTokenService {
         }
         Set<String> scopes = new LinkedHashSet<>();
         for (String scope : requestedScopes.trim().split("\\s+")) {
-            if (!ALLOWED_SCOPES.contains(scope)) {
+            if (!isAllowedScope(scope)) {
                 throw new IllegalArgumentException("Unsupported scope: " + scope);
             }
             scopes.add(scope);
@@ -84,6 +85,17 @@ public class LocalDevTokenService {
             throw new IllegalArgumentException("At least one scope is required");
         }
         return String.join(" ", scopes);
+    }
+
+    private static boolean isAllowedScope(String scope) {
+        if (ALLOWED_SCOPES.contains(scope)) {
+            return true;
+        }
+        if (scope == null || !scope.matches("[a-z][a-z0-9-]{1,30}\\.read")) {
+            return false;
+        }
+        String serviceId = scope.substring(0, scope.length() - ".read".length());
+        return !RESERVED_SERVICE_IDS.contains(serviceId);
     }
 
     public record DevToken(
