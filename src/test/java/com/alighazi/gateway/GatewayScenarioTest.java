@@ -17,7 +17,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -461,14 +460,13 @@ class GatewayScenarioTest {
         }
 
         @Test
-        void restoresPersistedDynamicRoutesDuringStartup() {
+        void restoresPersistedDynamicRoutesDuringStartup() throws Exception {
             String id = "restored";
             routeStore.save(new RouteStore.RouteConfig(
                     id, base(ordersServer), id + ".read", true, 5, 10)).block();
 
             routeCatalog.run(new DefaultApplicationArguments(new String[0]));
 
-            assertThat(routeCatalog).isNotNull();
             int status = 0;
             String body = "";
             for (int attempt = 0; attempt < 25; attempt++) {
