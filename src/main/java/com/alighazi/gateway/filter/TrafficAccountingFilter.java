@@ -4,6 +4,8 @@ import java.security.Principal;
 
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
@@ -28,12 +30,14 @@ public class TrafficAccountingFilter implements WebFilter, Ordered {
         if (serviceId == null) {
             return chain.filter(exchange);
         }
-        exchange.getResponse().beforeCommit(() -> {
+        return chain.filter(exchange).then(Mono.defer(() -> {
             HttpStatusCode status = exchange.getResponse().getStatusCode();
             int code = status == null ? 0 : status.value();
             boolean disabled = Boolean.TRUE.equals(exchange.getAttribute(RouteGovernance.DISABLED_ATTRIBUTE));
-            return exchange.getPrincipal()
-                    .map(Principal::getName)
+            return ReactiveSecurityContextHolder.getContext()
+                    .map(context -> context.getAuthentication())
+                    .filter(Authentication::isAuthenticated)
+                    .map(Authentication::getName)
                     .map(TrafficAccountingFilter::normalizePrincipal)
                     .defaultIfEmpty("anonymous")
                     .doOnNext(caller -> governance.record(serviceId, code, disabled, caller))
@@ -42,8 +46,7 @@ public class TrafficAccountingFilter implements WebFilter, Ordered {
                         return Mono.empty();
                     })
                     .then();
-        });
-        return chain.filter(exchange);
+        }));
     }
 
     static String normalizePrincipal(String principal) {
