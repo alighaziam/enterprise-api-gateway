@@ -1,9 +1,9 @@
 package com.alighazi.gateway.filter;
 
+import java.security.Principal;
+
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
@@ -28,14 +28,16 @@ public class TrafficAccountingFilter implements WebFilter, Ordered {
         if (serviceId == null) {
             return chain.filter(exchange);
         }
-        return chain.filter(exchange).then(Mono.defer(() -> {
+
+        // Record after the response is committed, when Spring Security has
+        // completed authentication and exposed the verified Principal.
+        exchange.getResponse().beforeCommit(() -> {
             HttpStatusCode status = exchange.getResponse().getStatusCode();
             int code = status == null ? 0 : status.value();
             boolean disabled = Boolean.TRUE.equals(exchange.getAttribute(RouteGovernance.DISABLED_ATTRIBUTE));
-            return ReactiveSecurityContextHolder.getContext()
-                    .map(context -> context.getAuthentication())
-                    .filter(Authentication::isAuthenticated)
-                    .map(Authentication::getName)
+
+            return exchange.getPrincipal()
+                    .map(Principal::getName)
                     .map(TrafficAccountingFilter::normalizePrincipal)
                     .defaultIfEmpty("anonymous")
                     .doOnNext(caller -> governance.record(serviceId, code, disabled, caller))
@@ -44,7 +46,8 @@ public class TrafficAccountingFilter implements WebFilter, Ordered {
                         return Mono.empty();
                     })
                     .then();
-        }));
+        });
+        return chain.filter(exchange);
     }
 
     static String normalizePrincipal(String principal) {
