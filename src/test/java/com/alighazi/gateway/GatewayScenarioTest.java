@@ -398,7 +398,7 @@ class GatewayScenarioTest {
                         .bodyValue(java.util.Map.of(
                                 "id", id,
                                 "backend", base(ordersServer),
-                                "scope", "orders.read",
+                                "scope", "billing.read",
                                 "replenishPerSecond", 5,
                                 "burst", 10,
                                 "enabled", true))
@@ -407,13 +407,13 @@ class GatewayScenarioTest {
                         .expectBody()
                         .jsonPath("$.id").isEqualTo(id)
                         .jsonPath("$.system").isEqualTo(false)
-                        .jsonPath("$.scope").isEqualTo("orders.read");
+                        .jsonPath("$.scope").isEqualTo("billing.read");
 
                 int status = 0;
                 String body = "";
                 for (int attempt = 0; attempt < 25; attempt++) {
                     var result = client.get().uri("/api/billing/77")
-                            .header(HttpHeaders.AUTHORIZATION, bearer(readToken("billing-" + attempt)))
+                            .header(HttpHeaders.AUTHORIZATION, bearer(token("billing-" + attempt, "billing.read", AUDIENCE, ISSUER, Instant.now().plusSeconds(300))))
                             .exchange()
                             .expectBody(String.class)
                             .returnResult();
