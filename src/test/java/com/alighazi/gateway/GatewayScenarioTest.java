@@ -17,6 +17,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
@@ -25,6 +27,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.alighazi.gateway.ops.RouteCatalog;
+import com.alighazi.gateway.ops.RouteStore;
 import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -52,6 +56,12 @@ class GatewayScenarioTest {
 
     @Autowired
     private WebTestClient client;
+
+    @Autowired
+    private RouteStore routeStore;
+
+    @Autowired
+    private RouteCatalog routeCatalog;
 
     @DynamicPropertySource
     static void gatewayProperties(DynamicPropertyRegistry registry) throws Exception {
@@ -409,6 +419,9 @@ class GatewayScenarioTest {
                         .jsonPath("$.system").isEqualTo(false)
                         .jsonPath("$.scope").isEqualTo("billing.read");
 
+                assertThat(routeStore.load().block())
+                        .anySatisfy(route -> assertThat(route.id()).isEqualTo(id));
+
                 int status = 0;
                 String body = "";
                 for (int attempt = 0; attempt < 25; attempt++) {
@@ -440,10 +453,46 @@ class GatewayScenarioTest {
                         .expectStatus().isNoContent();
             }
 
+            assertThat(routeStore.load().block()).noneMatch(route -> route.id().equals(id));
             client.get().uri("/api/billing/77")
                     .header(HttpHeaders.AUTHORIZATION, bearer(readToken("billing-gone")))
                     .exchange()
                     .expectStatus().isForbidden();
+        }
+
+        @Test
+        void restoresPersistedDynamicRoutesDuringStartup() {
+            String id = "restored";
+            routeStore.save(new RouteStore.RouteConfig(
+                    id, base(ordersServer), id + ".read", true, 5, 10)).block();
+
+            routeCatalog.run(new DefaultApplicationArguments(new String[0]));
+
+            assertThat(routeCatalog).isNotNull();
+            int status = 0;
+            String body = "";
+            for (int attempt = 0; attempt < 25; attempt++) {
+                var result = client.get().uri("/api/" + id + "/77")
+                        .header(HttpHeaders.AUTHORIZATION,
+                                bearer(token("restored-user", id + ".read", AUDIENCE, ISSUER, Instant.now().plusSeconds(300))))
+                        .exchange()
+                        .expectBody(String.class)
+                        .returnResult();
+                status = result.getStatus().value();
+                body = result.getResponseBody() == null ? "" : result.getResponseBody();
+                if (status == 200 && body.contains("\\"path\\":\\"/77\\"")) {
+                    break;
+                }
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(exception);
+                }
+            }
+            assertThat(status).isEqualTo(200);
+            assertThat(body).contains("\\"path\\":\\"/77\\"");
+            routeCatalog.delete(id).block();
         }
 
         @Test
