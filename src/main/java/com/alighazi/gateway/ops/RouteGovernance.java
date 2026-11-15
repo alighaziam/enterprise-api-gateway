@@ -203,6 +203,9 @@ public class RouteGovernance {
             throw new UnknownService();
         }
         synchronized (runtime) {
+            if (services.get(serviceId) != runtime) {
+                throw new UnknownService();
+            }
             if (runtime.system && (backend != null || scope != null)) {
                 throw new IllegalArgumentException("system_service");
             }
