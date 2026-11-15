@@ -391,6 +391,7 @@ public class RouteGovernance {
         String scheme = uri.getScheme();
         String host = uri.getHost();
         if (host == null || uri.getUserInfo() != null || uri.getRawFragment() != null
+                || uri.getRawQuery() != null || uri.getPort() == 0 || uri.getPort() > 65535
                 || scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
             throw new IllegalArgumentException("invalid_backend");
         }
