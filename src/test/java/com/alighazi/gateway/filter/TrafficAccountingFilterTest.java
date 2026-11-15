@@ -7,13 +7,11 @@ import org.junit.jupiter.api.Test;
 class TrafficAccountingFilterTest {
 
     @Test
-    void readsTheSubjectFromAnUnverifiedBearerToken() {
-        String payload = java.util.Base64.getUrlEncoder().withoutPadding()
-                .encodeToString("{\"sub\":\"alice\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-
-        assertThat(TrafficAccountingFilter.subjectFromBearer("Bearer header." + payload + ".sig"))
-                .isEqualTo("alice");
-        assertThat(TrafficAccountingFilter.subjectFromBearer(null)).isEqualTo("anonymous");
-        assertThat(TrafficAccountingFilter.subjectFromBearer("Bearer not-a-jwt")).isEqualTo("anonymous");
+    void normalizesOnlyAuthenticatedPrincipalNames() {
+        assertThat(TrafficAccountingFilter.normalizePrincipal("alice")).isEqualTo("alice");
+        assertThat(TrafficAccountingFilter.normalizePrincipal("  alice  ")).isEqualTo("alice");
+        assertThat(TrafficAccountingFilter.normalizePrincipal(null)).isEqualTo("anonymous");
+        assertThat(TrafficAccountingFilter.normalizePrincipal("   ")).isEqualTo("anonymous");
+        assertThat(TrafficAccountingFilter.normalizePrincipal("x".repeat(81))).isEqualTo("anonymous");
     }
 }
