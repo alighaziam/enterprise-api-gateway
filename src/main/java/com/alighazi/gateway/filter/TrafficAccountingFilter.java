@@ -1,7 +1,5 @@
 package com.alighazi.gateway.filter;
 
-import java.security.Principal;
-
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.security.core.Authentication;
