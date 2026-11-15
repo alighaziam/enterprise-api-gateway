@@ -135,8 +135,13 @@ public class ConsoleStatusService {
         long started = System.nanoTime();
         return webClient.get()
                 .uri(url)
-                .exchangeToMono(response -> Mono.just(
-                        ServiceProbe.up(id, label, response.statusCode().value() + " از سرویس پشتیبان", elapsedMs(started))))
+                .exchangeToMono(response -> {
+                    int status = response.statusCode().value();
+                    String detail = "HTTP " + status + " از سرویس پشتیبان";
+                    return Mono.just(response.statusCode().is5xxServerError()
+                            ? ServiceProbe.down(id, label, detail, elapsedMs(started))
+                            : ServiceProbe.up(id, label, detail, elapsedMs(started)));
+                })
                 .timeout(Duration.ofSeconds(2))
                 .onErrorResume(ex -> Mono.just(ServiceProbe.down(id, label, describe(ex), elapsedMs(started))));
     }
@@ -145,10 +150,14 @@ public class ConsoleStatusService {
         long started = System.nanoTime();
         return webClient.get()
                 .uri(url)
-                .retrieve()
-                .toBodilessEntity()
+                .exchangeToMono(response -> {
+                    int status = response.statusCode().value();
+                    String detail = "HTTP " + status + " از سرویس پشتیبان";
+                    return Mono.just(response.statusCode().is5xxServerError()
+                            ? ServiceProbe.down(id, label, detail, elapsedMs(started))
+                            : ServiceProbe.up(id, label, detail, elapsedMs(started)));
+                })
                 .timeout(Duration.ofSeconds(2))
-                .map(response -> ServiceProbe.up(id, label, response.getStatusCode().value() + " از سرویس پشتیبان", elapsedMs(started)))
                 .onErrorResume(ex -> Mono.just(ServiceProbe.down(id, label, describe(ex), elapsedMs(started))));
     }
 
