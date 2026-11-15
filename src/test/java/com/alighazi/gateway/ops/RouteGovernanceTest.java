@@ -92,7 +92,7 @@ class RouteGovernanceTest {
         RouteGovernance governance = governance();
 
         RouteGovernance.ServiceOperations created = governance.create(
-                "billing", "http://billing-service:8081", "orders.read", 5, 8, true);
+                "billing", "http://billing-service:8081", "billing.read", 5, 8, true);
 
         assertThat(created.system()).isFalse();
         assertThat(created.backend()).isEqualTo("http://billing-service:8081");
