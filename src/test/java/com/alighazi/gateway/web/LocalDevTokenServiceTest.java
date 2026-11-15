@@ -31,10 +31,14 @@ class LocalDevTokenServiceTest {
     }
 
     @Test
-    void rejectsUnknownScopes() {
+    void acceptsCustomReadScopesButRejectsUnregisteredPrivilegeNames() {
+        assertThat(LocalDevTokenService.normalizeScopes("billing.read")).isEqualTo("billing.read");
         assertThatThrownBy(() -> LocalDevTokenService.normalizeScopes("orders.write"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("orders.write");
+        assertThatThrownBy(() -> LocalDevTokenService.normalizeScopes("gateway.read"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("gateway.read");
     }
 
     @Test
