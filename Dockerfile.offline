@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM ubuntu:25.10
 COPY docker/jre/openjdk-21.0.2_linux-x64_bin.tar.gz /tmp/jdk.tar.gz
 RUN tar -xzf /tmp/jdk.tar.gz -C /opt --strip-components=1 --one-top-level=java \
     && rm /tmp/jdk.tar.gz
