@@ -101,7 +101,7 @@ public class RouteCatalog implements ApplicationRunner {
                 });
     }
 
-    private Mono<ServiceOperations> cleanupCreated(ServiceOperations created, RuntimeException failure) {
+    private Mono<ServiceOperations> cleanupCreated(ServiceOperations created, Throwable failure) {
         return routes.unpublish(created.id())
                 .onErrorResume(cleanupFailure -> {
                     failure.addSuppressed(cleanupFailure);
@@ -119,7 +119,7 @@ public class RouteCatalog implements ApplicationRunner {
                 .then(Mono.error(failure));
     }
 
-    private Mono<ServiceOperations> restoreAfterFailure(ServiceOperations previous, RuntimeException failure) {
+    private Mono<ServiceOperations> restoreAfterFailure(ServiceOperations previous, Throwable failure) {
         ServiceOperations restored;
         try {
             try {
