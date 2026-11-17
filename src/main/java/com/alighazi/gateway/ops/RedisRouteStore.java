@@ -5,8 +5,8 @@ import java.util.List;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import reactor.core.publisher.Mono;
 
@@ -33,7 +33,7 @@ public class RedisRouteStore implements RouteStore {
     @Override
     public Mono<Void> save(RouteConfig route) {
         return Mono.fromCallable(() -> objectMapper.writeValueAsString(route))
-                .onErrorMap(JsonProcessingException.class,
+                .onErrorMap(JacksonException.class,
                         exception -> new IllegalStateException("Could not serialize route configuration.", exception))
                 .flatMap(json -> redis.<String, String>opsForHash().put(HASH_KEY, route.id(), json))
                 .then();
