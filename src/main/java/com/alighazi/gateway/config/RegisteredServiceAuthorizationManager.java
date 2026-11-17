@@ -1,6 +1,7 @@
 package com.alighazi.gateway.config;
 
 import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.authorization.AuthorizationResult;
 import org.springframework.security.authorization.ReactiveAuthorizationManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.server.authorization.AuthorizationContext;
@@ -21,19 +22,19 @@ public class RegisteredServiceAuthorizationManager implements ReactiveAuthorizat
     }
 
     @Override
-    public Mono<AuthorizationDecision> check(Mono<Authentication> authentication, AuthorizationContext context) {
+    public Mono<AuthorizationResult> authorize(Mono<Authentication> authentication, AuthorizationContext context) {
         String serviceId = governance.resolve(context.getExchange().getRequest().getPath().value());
         ServiceOperations operation = serviceId == null ? null : governance.operations().stream()
                 .filter(candidate -> candidate.id().equals(serviceId) && !candidate.system())
                 .findFirst()
                 .orElse(null);
         if (operation == null) {
-            return Mono.just(new AuthorizationDecision(false));
+            return Mono.<AuthorizationResult>just(new AuthorizationDecision(false));
         }
         String authority = "SCOPE_" + operation.scope();
         return authentication
                 .filter(Authentication::isAuthenticated)
-                .map(auth -> new AuthorizationDecision(auth.getAuthorities().stream()
+                .<AuthorizationResult>map(auth -> new AuthorizationDecision(auth.getAuthorities().stream()
                         .anyMatch(granted -> authority.equals(granted.getAuthority()))))
                 .defaultIfEmpty(new AuthorizationDecision(false));
     }
