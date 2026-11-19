@@ -90,6 +90,6 @@ docker compose down -v
 - Check the application logs for invalid YAML or unresolved environment variables.
 - Confirm the configured issuer is syntactically valid. Ensure the gateway container can resolve its hostname and trust the certificate.
 
-## Production caution
+## Direct TLS deployment\n\nDirect HTTPS is optional and disabled by default. Follow [TLS deployment](tls-deployment.md), keep the PKCS12 keystore outside the repository, mount it read-only with `docker-compose.tls.yml`, and inject passwords through the deployment secret manager. Validate certificate expiry and rotation before rollout. `GATEWAY_TLS_CLIENT_AUTH=need` enforces mutual TLS and must only be used when clients present certificates trusted by the configured truststore.\n\n## Production caution
 
 Do not expose actuator endpoints publicly, disable TLS validation, commit secrets, or use the local WireMock services in production. Tune rate limits and circuit breakers through load tests before production rollout.
