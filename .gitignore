@@ -11,6 +11,7 @@ target/
 .settings/
 
 # Local environment and secrets
+secrets/
 .env
 .env.*
 !.env.example
