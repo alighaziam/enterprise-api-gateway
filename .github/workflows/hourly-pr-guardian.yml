@@ -1,0 +1,45 @@
+name: Hourly PR Guardian
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: read
+
+concurrency:
+  group: hourly-pr-guardian
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge only for clean PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -u
+          prs="$(gh pr list --state open --json number,isDraft,mergeable --jq '.[] | select(.isDraft == false and .mergeable == "MERGEABLE") | .number')"
+          if [ -z "$prs" ]; then
+            echo "No non-draft, mergeable open PRs."
+            exit 0
+          fi
+
+          while IFS= read -r pr; do
+            [ -z "$pr" ] && continue
+            echo "Checking PR #$pr"
+            checks_json="$(gh pr checks "$pr" --json state 2>/dev/null || true)"
+            if printf '%s' "$checks_json" | jq -e 'type == "array" and length > 0 and all(.[]; .state == "SUCCESS")' >/dev/null 2>&1; then
+              echo "All reported checks passed; requesting GitHub auto-merge."
+              if ! gh pr merge "$pr" --auto --squash; then
+                echo "Auto-merge was not enabled for PR #$pr; repository rules or settings may require attention."
+              fi
+            else
+              echo "PR #$pr is not eligible: checks are missing, pending, or failing."
+            fi
+          done <<< "$prs"
