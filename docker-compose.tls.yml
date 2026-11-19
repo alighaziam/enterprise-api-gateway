@@ -1,0 +1,7 @@
+services:
+  gateway:
+    volumes:
+      - type: bind
+        source: ${GATEWAY_TLS_KEY_STORE_HOST_PATH:?Set GATEWAY_TLS_KEY_STORE_HOST_PATH to a PKCS12 keystore file}
+        target: ${GATEWAY_TLS_KEY_STORE:-/run/secrets/gateway-keystore.p12}
+        read_only: true

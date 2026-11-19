@@ -103,7 +103,7 @@ The route filters are configured per service. Rate limits are keyed by the authe
 |---|---|---|
 | `WSO2_ISSUER_URI` | `https://localhost:9443/oauth2/token` in app config | Exact JWT `iss` claim and configured issuer |
 | `WSO2_JWKS_URI` | `https://localhost:9443/oauth2/jwks` in app config | WSO2 signing-key endpoint; override for custom paths |
-| `WSO2_REQUIRED_AUDIENCE` | empty | If set, required value in JWT `aud` |
+| `WSO2_REQUIRED_AUDIENCE` | empty | If set, required value in JWT `aud` |\n| `GATEWAY_TLS_ENABLED` | `false` | Enable the gateway's direct HTTPS listener |\n| `GATEWAY_TLS_KEY_STORE` | `/run/secrets/gateway-keystore.p12` in the sample env | PKCS12/JKS keystore path inside the container |\n| `GATEWAY_TLS_KEY_STORE_PASSWORD` | empty | Inject from a secret manager; never commit it |\n| `GATEWAY_TLS_KEY_ALIAS` | `gateway` | Server certificate alias |\n| `GATEWAY_TLS_CLIENT_AUTH` | `none` | Optional client-certificate policy: `none`, `want`, or `need` |
 | `REDIS_HOST` | `localhost` | Redis hostname |
 | `REDIS_PORT` | `6379` | Redis port |
 | `ORDERS_SERVICE_URI` | `http://localhost:8081` | Orders backend |
@@ -115,7 +115,7 @@ The route filters are configured per service. Rate limits are keyed by the authe
 
 **Important:** the issuer configured in the gateway must exactly match the `iss` claim in WSO2 access tokens. The configured JWKS endpoint must be reachable from the gateway. In Docker, the WSO2 hostname must resolve from the gateway container, and the JVM must trust its TLS certificate. Do not disable TLS verification.
 
-## Operational endpoints
+## Direct HTTPS listener\n\nDirect TLS is disabled by default. To enable it, create a PKCS12 keystore outside the repository, inject its password through a secret manager, set `GATEWAY_TLS_ENABLED=true`, and start with `docker compose -f docker-compose.yml -f docker-compose.tls.yml up --build -d`. See [TLS deployment](docs/tls-deployment.md) for certificate creation, the read-only mount, and rotation guidance. Do not commit keystores, passwords, or private keys.\n\n## Operational endpoints
 
 - `GET /actuator/health`
 - `GET /actuator/info`
@@ -155,7 +155,7 @@ This repository provides an implementation baseline, not a claim of production c
 1. Validate the actual WSO2 IS 7.3 issuer, JWKS reachability, token claims, scopes and audience.
 2. Install the WSO2 CA certificate in the JVM truststore.
 3. Configure Redis authentication/TLS, persistence, HA and network restrictions.
-4. Put the gateway behind TLS termination and configure trusted proxy headers.
+4. Enable direct HTTPS using the optional TLS Compose override, or terminate TLS at a trusted ingress and configure trusted proxy headers.
 5. Restrict management endpoints to an internal network.
 6. Set rate limits and circuit-breaker thresholds from load-test results.
 7. Add distributed tracing, centralized logs, dashboards and alerting.
