@@ -1,6 +1,17 @@
 server:
   port: 8080
   shutdown: graceful
+  ssl:
+    enabled: ${GATEWAY_TLS_ENABLED:false}
+    key-store: ${GATEWAY_TLS_KEY_STORE:}
+    key-store-password: ${GATEWAY_TLS_KEY_STORE_PASSWORD:}
+    key-store-type: ${GATEWAY_TLS_KEY_STORE_TYPE:PKCS12}
+    key-alias: ${GATEWAY_TLS_KEY_ALIAS:}
+    key-password: ${GATEWAY_TLS_KEY_PASSWORD:}
+    trust-store: ${GATEWAY_TLS_TRUST_STORE:}
+    trust-store-password: ${GATEWAY_TLS_TRUST_STORE_PASSWORD:}
+    trust-store-type: ${GATEWAY_TLS_TRUST_STORE_TYPE:PKCS12}
+    client-auth: ${GATEWAY_TLS_CLIENT_AUTH:none}
 
 spring:
   application:
