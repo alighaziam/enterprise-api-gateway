@@ -1,7 +1,7 @@
 # Standardized Progress Assessment
 
 - Assessment date: 2026-11-19
-- Baseline commit: `14137e45` on `main`
+- Baseline commit: `3308a3e4b5bb74bfabf42c5c59808ea498e34c02` on `main`
 - Status: evidence-based baseline; category ratings are reviewer scores against the rubric below, not raw GitHub counters.
 - Overall weighted score: **82.7%**
 
@@ -23,8 +23,8 @@ Formula: overall progress = sum(category score × category weight). A category s
 
 README architecture, `docs/runbook.md`, `SECURITY.md`, Docker Compose, Spring Security/JWT, Redis rate limiting, circuit breakers, and the latest CI + CodeQL runs passed on 2026-11-19.
 
-- Latest CI/build evidence: https://github.com/alighaziam/enterprise-api-gateway/actions/runs/44492422843
-- Latest CodeQL/security workflow evidence: https://github.com/alighaziam/enterprise-api-gateway/actions/runs/44492422853
+- Latest CI/build evidence: https://github.com/alighaziam/enterprise-api-gateway/actions/runs/44570596059
+- Latest CodeQL/security workflow evidence: https://github.com/alighaziam/enterprise-api-gateway/actions/runs/44570596027
 
 ## Remaining release gates
 
@@ -40,3 +40,4 @@ Production TLS and secret-manager configuration; Redis HA and operational monito
 6. Update this file when evidence changes; do not infer progress from commit count.
 
 This is a consistent engineering assessment baseline, not a claim that a single objectively exact percentage exists independent of the scoring rubric.
+\n\n## Latest merged increment — 19 November 2026\n\nOptional direct HTTPS listener, read-only Compose keystore mount, secret-injection configuration, and optional mTLS settings merged in PR #24; CI and CodeQL passed. Live certificate/secret-manager deployment remains a release gate.\n
