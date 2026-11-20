@@ -47,3 +47,10 @@ This is a consistent engineering assessment baseline, not a claim that a single 
 - Added bounded-cardinality Micrometer counter `gateway.route.requests` for route outcome and HTTP status class. Labels intentionally exclude service IDs, caller identities, URLs and raw status codes to avoid unbounded cardinality and sensitive dimensions.
 - RouteGovernance continues to retain its bounded in-memory per-route/per-caller operational view; the new counter exposes aggregate request outcomes through the existing Prometheus endpoint.
 - CI and CodeQL validation are pending for this branch; no progress score change is claimed before verification.
+
+
+## Latest merged increment — 20 November 2026
+
+- PR #25 merged as `6cb6c3674dd15e676e28f7dfd14c89def9dc4ddd` after CI and CodeQL passed on head `09ed93c39a6d6a1e729153472238b84869f048c2`.
+- Added bounded-cardinality Micrometer counter `gateway.route.requests` for route outcome and HTTP status class. Labels exclude service IDs, caller identities, URLs and raw status codes.
+- No overall score increase is claimed until the rubric is reassessed; production TLS/secret management, Redis HA and measured load testing remain release gates.
