@@ -26,7 +26,7 @@ jobs:
         run: |
           set -euo pipefail
           repo="$GH_REPO"
-          prs="$(gh pr list --repo "$repo" --state open --json number,isDraft,mergeable,mergeStateStatus,reviewDecision --jq '.[] | select(.isDraft == false and .mergeable == true and .mergeStateStatus == "CLEAN" and (.reviewDecision == null or .reviewDecision == "APPROVED")) | .number')"
+          prs="$(gh pr list --repo "$repo" --state open --json number,isDraft,mergeable,mergeStateStatus,reviewDecision --jq '.[] | select(.isDraft == false and .mergeable == "MERGEABLE" and .mergeStateStatus == "CLEAN" and (.reviewDecision == null or .reviewDecision == "APPROVED")) | .number')"
 
           if [[ -z "$prs" ]]; then
             echo "No PR currently satisfies the mergeability, clean-state, and review-decision gates."
