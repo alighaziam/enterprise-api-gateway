@@ -41,3 +41,9 @@ Production TLS and secret-manager configuration; Redis HA and operational monito
 
 This is a consistent engineering assessment baseline, not a claim that a single objectively exact percentage exists independent of the scoring rubric.
 \n\n## Latest merged increment — 19 November 2026\n\nOptional direct HTTPS listener, read-only Compose keystore mount, secret-injection configuration, and optional mTLS settings merged in PR #24; CI and CodeQL passed. Live certificate/secret-manager deployment remains a release gate.\n
+
+## Development checkpoint — 20 November 2026
+
+- Added bounded-cardinality Micrometer counter `gateway.route.requests` for route outcome and HTTP status class. Labels intentionally exclude service IDs, caller identities, URLs and raw status codes to avoid unbounded cardinality and sensitive dimensions.
+- RouteGovernance continues to retain its bounded in-memory per-route/per-caller operational view; the new counter exposes aggregate request outcomes through the existing Prometheus endpoint.
+- CI and CodeQL validation are pending for this branch; no progress score change is claimed before verification.

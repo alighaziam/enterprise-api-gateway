@@ -8,6 +8,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 class RouteGovernanceTest {
 
@@ -36,6 +37,10 @@ class RouteGovernanceTest {
         assertThat(orders.rejected()).isEqualTo(1);
         assertThat(orders.disabledHits()).isEqualTo(1);
         assertThat(orders.failed()).isZero();
+        assertThat(governanceMeters(governance, "success", "2xx")).isEqualTo(1.0);
+        assertThat(governanceMeters(governance, "limited", "4xx")).isEqualTo(1.0);
+        assertThat(governanceMeters(governance, "consumer", "4xx")).isEqualTo(1.0);
+        assertThat(governanceMeters(governance, "operator", "5xx")).isEqualTo(1.0);
     }
 
     @Test
@@ -74,7 +79,7 @@ class RouteGovernanceTest {
         List<String> applied = new ArrayList<>();
         RouteGovernance governance = new RouteGovernance(
                 (routeId, replenish, burst) -> applied.add(routeId + ":" + replenish + ":" + burst),
-                emptyBreakers(), 20, 40, 30, 60, "http://localhost:8081", "http://localhost:8082", "orders-service,customers-service,billing-service", false);
+                new SimpleMeterRegistry(), emptyBreakers(), 20, 40, 30, 60, "http://localhost:8081", "http://localhost:8082", "orders-service,customers-service,billing-service", false);
 
         RouteGovernance.ServiceOperations updated = governance.update("orders", false, 5, 9);
 
@@ -138,8 +143,13 @@ class RouteGovernanceTest {
         assertThat(governance.replenish("orders")).isEqualTo(20);
     }
 
+    private static double governanceMeters(RouteGovernance governance, String outcome, String statusClass) {
+        return governance.meterRegistryForTest().get("gateway.route.requests")
+                .tag("outcome", outcome).tag("status_class", statusClass).counter().count();
+    }
+
     private static RouteGovernance governance() {
-        return new RouteGovernance((routeId, replenish, burst) -> { }, emptyBreakers(), 20, 40, 30, 60,
+        return new RouteGovernance((routeId, replenish, burst) -> { }, new SimpleMeterRegistry(), emptyBreakers(), 20, 40, 30, 60,
                 "http://localhost:8081", "http://localhost:8082", "orders-service,customers-service,billing-service", false);
     }
 
