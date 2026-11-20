@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.micrometer.core.instrument.MeterRegistry;
 
 @Component
 public class RouteGovernance {
@@ -27,6 +28,7 @@ public class RouteGovernance {
     private static final int CALLER_LIMIT = 24;
 
     private final LiveRateLimit rateLimit;
+    private final MeterRegistry meters;
     private final ObjectProvider<CircuitBreakerRegistry> breakers;
     private final java.util.Set<String> allowedBackendHosts;
     private final boolean allowLoopbackBackend;
@@ -35,6 +37,7 @@ public class RouteGovernance {
 
     public RouteGovernance(
             LiveRateLimit rateLimit,
+            MeterRegistry meters,
             ObjectProvider<CircuitBreakerRegistry> breakers,
             @Value("${ORDERS_RATE_LIMIT_REPLENISH:20}") int ordersReplenish,
             @Value("${ORDERS_RATE_LIMIT_BURST:40}") int ordersBurst,
@@ -45,6 +48,7 @@ public class RouteGovernance {
             @Value("${GATEWAY_ROUTE_ALLOWED_HOSTS:orders-mock,customers-mock}") String allowedHosts,
             @Value("${GATEWAY_ROUTE_ALLOW_LOOPBACK:false}") boolean allowLoopbackBackend) {
         this.rateLimit = rateLimit;
+        this.meters = meters;
         this.breakers = breakers;
         this.allowLoopbackBackend = allowLoopbackBackend;
         this.allowedBackendHosts = java.util.Arrays.stream(allowedHosts.split(","))
@@ -56,6 +60,8 @@ public class RouteGovernance {
         services.put("orders", new ServiceRuntime("orders", true, true, trimSlash(ordersUri), "orders.read", ordersReplenish, ordersBurst));
         services.put("customers", new ServiceRuntime("customers", true, true, trimSlash(customersUri), "customers.read", customersReplenish, customersBurst));
     }
+
+    MeterRegistry meterRegistryForTest() { return meters; }
 
     public static String serviceId(String path) {
         if (path == null) {
@@ -169,6 +175,9 @@ public class RouteGovernance {
             return;
         }
         String side = sideOf(status, disabled);
+        meters.counter("gateway.route.requests",
+                "outcome", side.toLowerCase(java.util.Locale.ROOT),
+                "status_class", statusClass(status)).increment();
         String who = sanitizeCaller(caller);
         String at = Instant.now().toString();
         runtime.calls.incrementAndGet();
@@ -293,6 +302,14 @@ public class RouteGovernance {
                 runtime.backend,
                 runtime.scope,
                 outageOf(runtime, circuit));
+    }
+
+    private static String statusClass(int status) {
+        if (status >= 200 && status < 300) return "2xx";
+        if (status >= 300 && status < 400) return "3xx";
+        if (status >= 400 && status < 500) return "4xx";
+        if (status >= 500 && status < 600) return "5xx";
+        return "other";
     }
 
     private static String sideOf(int status, boolean disabled) {
