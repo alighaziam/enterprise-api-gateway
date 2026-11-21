@@ -18,7 +18,7 @@ jobs:
   guard:
     runs-on: ubuntu-latest
     steps:
-      - name: Merge only verified, review-approved PRs
+      - name: Merge only verified, explicitly approved PRs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -26,10 +26,10 @@ jobs:
         run: |
           set -euo pipefail
           repo="$GH_REPO"
-          prs="$(gh pr list --repo "$repo" --state open --json number,isDraft,mergeable,mergeStateStatus,reviewDecision --jq '.[] | select(.isDraft == false and .mergeable == "MERGEABLE" and .mergeStateStatus == "CLEAN" and (.reviewDecision == null or .reviewDecision == "APPROVED")) | .number')"
+          prs="$(gh pr list --repo "$repo" --state open --json number,isDraft,mergeable,mergeStateStatus,reviewDecision --jq '.[] | select(.isDraft == false and .mergeable == "MERGEABLE" and .mergeStateStatus == "CLEAN" and (.reviewDecision == "APPROVED")) | .number')"
 
           if [[ -z "$prs" ]]; then
-            echo "No PR currently satisfies the mergeability, clean-state, and review-decision gates."
+            echo "No PR currently satisfies the mergeability, clean-state, and explicit approval gates."
             exit 0
           fi
 
