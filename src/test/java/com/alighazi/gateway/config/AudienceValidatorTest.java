@@ -1,6 +1,7 @@
 package com.alighazi.gateway.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 
@@ -10,6 +11,16 @@ import org.springframework.security.oauth2.jwt.Jwt;
 class AudienceValidatorTest {
 
     private final AudienceValidator validator = new AudienceValidator("gateway-api");
+
+    @Test
+    void rejectsMissingOrBlankRequiredAudienceAtConstructionTime() {
+        assertThatThrownBy(() -> new AudienceValidator(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("non-blank");
+        assertThatThrownBy(() -> new AudienceValidator("  "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("non-blank");
+    }
 
     @Test
     void acceptsTokenThatContainsRequiredAudience() {
