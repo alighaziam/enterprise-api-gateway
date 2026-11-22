@@ -409,6 +409,7 @@ public class RouteGovernance {
         String host = uri.getHost();
         if (host == null || uri.getUserInfo() != null || uri.getRawFragment() != null
                 || uri.getRawQuery() != null || uri.getPort() == 0 || uri.getPort() > 65535
+                || hasUnsafeBackendPath(uri.getRawPath())
                 || scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
             throw new IllegalArgumentException("invalid_backend");
         }
@@ -422,6 +423,17 @@ public class RouteGovernance {
             throw new IllegalArgumentException("backend_host_not_allowed");
         }
         return trimSlash(uri.toString());
+    }
+
+    private static boolean hasUnsafeBackendPath(String rawPath) {
+        if (rawPath == null || rawPath.isBlank()) return false;
+        for (String segment : rawPath.split("/", -1)) {
+            String decoded = java.net.URLDecoder.decode(segment, java.nio.charset.StandardCharsets.UTF_8);
+            if (decoded.equals(".") || decoded.equals("..") || decoded.contains("/") || decoded.contains("\\\\")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isLoopbackHost(String host) {
