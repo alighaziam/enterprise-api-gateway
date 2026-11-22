@@ -10,6 +10,9 @@ final class AudienceValidator implements OAuth2TokenValidator<Jwt> {
     private final String requiredAudience;
 
     AudienceValidator(String requiredAudience) {
+        if (requiredAudience == null || requiredAudience.isBlank()) {
+            throw new IllegalArgumentException("A non-blank required JWT audience must be configured");
+        }
         this.requiredAudience = requiredAudience;
     }
 
