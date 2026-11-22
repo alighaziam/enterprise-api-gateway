@@ -160,4 +160,20 @@ class RouteGovernanceTest {
         org.mockito.Mockito.when(provider.getIfAvailable()).thenReturn(null);
         return provider;
     }
+
+    @Test
+    void rejectsDotSegmentAndEncodedSeparatorBackendPaths() {
+        RouteGovernance governance = governance();
+
+        assertThatThrownBy(() -> governance.create(
+                "billing", "http://orders-service:8081/api/../admin", "billing.read", 5, 8, true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("invalid_backend");
+        assertThatThrownBy(() -> governance.create(
+                "billing", "http://orders-service:8081/api/%2e%2e/admin", "billing.read", 5, 8, true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("invalid_backend");
+        assertThatThrownBy(() -> governance.create(
+                "billing", "http://orders-service:8081/api%2fadmin", "billing.read", 5, 8, true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("invalid_backend");
+    }
+
 }
