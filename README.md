@@ -11,6 +11,7 @@ A reactive, security-first API Gateway built with Java 21, Spring Boot 3.5, and 
 - Resilience4j circuit breakers with JSON 503 fallback responses
 - Bounded connection and response timeouts
 - Correlation ID generation before Spring Security, including 401/403 responses
+- Persistent bounded operator audit history for dynamic route create/update/delete, with actor, outcome, reason code and correlation ID
 - Actuator health/info, Micrometer metrics and Prometheus endpoint
 - Docker Compose environment with Redis and WireMock backend services
 - GitHub Actions CI workflow running Maven verification, Compose validation and Docker build
@@ -120,6 +121,7 @@ The route filters are configured per service. Rate limits are keyed by the authe
 - `GET /actuator/health`
 - `GET /actuator/info`
 - `GET /actuator/prometheus`
+- `GET /api/console/audit?limit=50` (requires `gateway.admin`; returns newest bounded route-management audit entries)
 
 Health and info are public. Prometheus, metrics, and gateway diagnostics require the `gateway.admin` scope; all other actuator endpoints are denied. Restrict actuator exposure to an internal network in production. See [Prometheus metrics and alerting](docs/prometheus-alerting.md) for the scrape identity, alert rules, and validation steps.
 
@@ -171,3 +173,8 @@ To be decided.
 ### Dynamic route target allowlist
 
 Dynamic route destinations are restricted by exact hostname using `GATEWAY_ROUTE_ALLOWED_HOSTS` (comma-separated). The Compose default allows only the internal `orders-mock` and `customers-mock` DNS names; production deployments should explicitly configure their own internal service DNS names. IP literals, localhost, link-local/local/internal suffixes, user-info and unapproved hosts are rejected. Do not add arbitrary or user-controlled hostnames to this list. The allowlist is an application-layer control; production network egress policy must independently deny loopback, RFC1918/link-local ranges and cloud metadata addresses to defend against DNS rebinding and compromised DNS.
+
+
+### Operator route audit
+
+Dynamic route creation, updates and deletion are recorded in a Redis-backed audit list capped at 200 events. Each entry stores the authenticated JWT subject, action, service ID, success/failure outcome, a bounded reason code, correlation ID and timestamp. The audit does not store backend URLs, access tokens or exception text. Read the latest 1–100 entries with `GET /api/console/audit?limit=50`; the endpoint is protected by the existing `gateway.admin` scope. Audit persistence errors are logged but do not turn a successful route change into a failed route operation.

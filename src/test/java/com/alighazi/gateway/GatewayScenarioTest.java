@@ -26,6 +26,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.alighazi.gateway.ops.RouteAuditStore;
 import com.alighazi.gateway.ops.RouteCatalog;
 import com.alighazi.gateway.ops.RouteStore;
 import com.nimbusds.jose.JOSEObjectType;
@@ -61,6 +62,9 @@ class GatewayScenarioTest {
 
     @Autowired
     private RouteCatalog routeCatalog;
+
+    @Autowired
+    private RouteAuditStore routeAuditStore;
 
     @DynamicPropertySource
     static void gatewayProperties(DynamicPropertyRegistry registry) throws Exception {
@@ -471,6 +475,20 @@ class GatewayScenarioTest {
             }
 
             assertThat(routeStore.load().block()).noneMatch(route -> route.id().equals(id));
+            List<RouteAuditStore.Entry> audit = routeAuditStore.latest(100).block();
+            assertThat(audit).filteredOn(event -> id.equals(event.serviceId()))
+                    .extracting(RouteAuditStore.Entry::action)
+                    .contains("CREATE", "DELETE");
+            assertThat(audit).filteredOn(event -> id.equals(event.serviceId()))
+                    .allSatisfy(event -> assertThat(event.actor()).isEqualTo("gateway-operator"));
+            client.get().uri("/api/console/audit?limit=100")
+                    .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody(String.class)
+                    .value(body -> assertThat(body).contains("\"serviceId\":\"billing\"")
+                            .contains("\"action\":\"DELETE\"")
+                            .contains("\"actor\":\"gateway-operator\""));
             client.get().uri("/api/billing/77")
                     .header(HttpHeaders.AUTHORIZATION, bearer(readToken("billing-gone")))
                     .exchange()
