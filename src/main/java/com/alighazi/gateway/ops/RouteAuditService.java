@@ -28,18 +28,20 @@ public class RouteAuditService {
 
     public Mono<Void> record(String actor, String action, String serviceId,
                              String outcome, String reason, String correlationId) {
-        String normalizedAction = normalize(action, ACTIONS, "invalid_audit_action");
-        String normalizedOutcome = normalize(outcome, OUTCOMES, "invalid_audit_outcome");
-        RouteAuditStore.Entry entry = new RouteAuditStore.Entry(
-                UUID.randomUUID().toString(),
-                boundedActor(actor),
-                normalizedAction,
-                boundedCode(serviceId, "unknown"),
-                normalizedOutcome,
-                boundedReason(reason),
-                boundedCorrelation(correlationId),
-                Instant.now().toString());
-        return store.append(entry);
+        return Mono.defer(() -> {
+            String normalizedAction = normalize(action, ACTIONS, "invalid_audit_action");
+            String normalizedOutcome = normalize(outcome, OUTCOMES, "invalid_audit_outcome");
+            RouteAuditStore.Entry entry = new RouteAuditStore.Entry(
+                    UUID.randomUUID().toString(),
+                    boundedActor(actor),
+                    normalizedAction,
+                    boundedCode(serviceId, "unknown"),
+                    normalizedOutcome,
+                    boundedReason(reason),
+                    boundedCorrelation(correlationId),
+                    Instant.now().toString());
+            return store.append(entry);
+        });
     }
 
     public Mono<List<RouteAuditStore.Entry>> latest(Integer requestedLimit) {
