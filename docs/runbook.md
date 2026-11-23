@@ -93,3 +93,15 @@ docker compose down -v
 ## Direct TLS deployment\n\nDirect HTTPS is optional and disabled by default. Follow [TLS deployment](tls-deployment.md), keep the PKCS12 keystore outside the repository, mount it read-only with `docker-compose.tls.yml`, and inject passwords through the deployment secret manager. Validate certificate expiry and rotation before rollout. `GATEWAY_TLS_CLIENT_AUTH=need` enforces mutual TLS and must only be used when clients present certificates trusted by the configured truststore.\n\n## Production caution
 
 Do not expose actuator endpoints publicly, disable TLS validation, commit secrets, or use the local WireMock services in production. Tune rate limits and circuit breakers through load tests before production rollout.
+
+
+## Operator route audit
+
+Route create/update/delete actions are recorded in Redis. Query the newest events with an operator token containing `gateway.admin`:
+
+```bash
+curl -i "http://localhost:8080/api/console/audit?limit=50" \
+  -H "Authorization: Bearer <gateway-admin-token>"
+```
+
+The endpoint accepts limits from 1 to 100 and returns newest first. Redis retains at most 200 entries. Records include actor subject, action, service ID, outcome, bounded reason code, correlation ID and timestamp; backend URLs, bearer tokens and raw exception text are intentionally excluded. If the audit store is unavailable, route management continues and the gateway logs a bounded warning; alert on those warnings because the audit trail may have a gap.
