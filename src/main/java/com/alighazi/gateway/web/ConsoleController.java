@@ -52,7 +52,7 @@ public class ConsoleController {
         return audit.latest(limit)
                 .map(entries -> ResponseEntity.ok().body((Object) entries))
                 .onErrorResume(IllegalArgumentException.class, error ->
-                        Mono.just(ResponseEntity.badRequest().body(Map.of("error", error.getMessage()))));
+                        Mono.just(ResponseEntity.badRequest().body((Object) Map.of("error", error.getMessage()))));
     }
 
     @PostMapping("/api/console/routes")
