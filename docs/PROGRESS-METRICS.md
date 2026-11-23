@@ -100,3 +100,40 @@ This is a consistent engineering assessment baseline, not a claim that a single 
 - Add a controlled deployment/release pipeline and production rollback exercise.
 
 The score meets the 90% engineering target under this weighted rubric. It is not a production certification or a claim that the remaining release gates are complete.
+
+
+## Evidence-based reassessment — 23 November 2026 (post persistent operator audit)
+
+- Assessed default-branch commit: `73504915ca632cfb7482c7d90ba4c5343f60ceb8`.
+- Overall weighted score: **91.60%**, using the same six dimensions and weights.
+
+| Dimension | Weight | Score | Weighted contribution |
+|---|---:|---:|---:|
+| Product capabilities | 40% | 92% | 36.80 |
+| Tests and code quality | 20% | 95% | 19.00 |
+| CI/CD and build | 15% | 100% | 15.00 |
+| Security | 10% | 90% | 9.00 |
+| Documentation | 5% | 96% | 4.80 |
+| Deployment / production readiness | 10% | 70% | 7.00 |
+| **Total** | **100%** | — | **91.60%** |
+
+### New evidence since the 90.55% assessment
+
+- PR [#33](https://github.com/alighaziam/enterprise-api-gateway/pull/33) added a Redis-backed operator audit history capped at 200 route create/update/delete events.
+- Audit entries retain the authenticated JWT subject, action, service ID, success/failure outcome, bounded reason code, correlation ID, and timestamp. Backend URLs, bearer tokens, and raw exception text are excluded.
+- The audit read endpoint is protected by the existing `gateway.admin` scope and limits results to 1–100 entries, newest first.
+- Redis-backed integration coverage verifies persistence, actor attribution, and the admin audit endpoint. Audit-store failure does not turn a successful route mutation into a failed operation; a bounded warning is emitted.
+- Exact PR-head CI [run 45122951910](https://github.com/alighaziam/enterprise-api-gateway/actions/runs/45122951910) and CodeQL [run 45122951897](https://github.com/alighaziam/enterprise-api-gateway/actions/runs/45122951897) passed.
+- Post-merge main CI [run 45123162114](https://github.com/alighaziam/enterprise-api-gateway/actions/runs/45123162114) and CodeQL [run 45123162009](https://github.com/alighaziam/enterprise-api-gateway/actions/runs/45123162009) passed on the assessed SHA.
+
+### Remaining release gates — not counted as complete
+
+- Validate against a live WSO2 IS 7.3 deployment and production certificate chain.
+- Integrate a production secret manager and rotate gateway, Redis, and Prometheus credentials.
+- Deploy Redis with authentication, TLS, HA, persistence, and tested failover.
+- Enforce independent network egress controls against private, link-local, and cloud metadata destinations.
+- Run load/soak, failure-mode, certificate-rotation, backup/restore, and penetration tests.
+- Add a controlled deployment/release pipeline and production rollback exercise.
+- The Redis-backed route audit is bounded but not an immutable compliance-grade archive; production audit export/retention and backup policy remain to be defined.
+
+The score remains above the 90% target under the same weighted rubric. It is not a production certification or a claim that the remaining release gates are complete.
