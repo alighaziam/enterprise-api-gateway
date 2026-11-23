@@ -41,7 +41,7 @@ public class RedisRouteAuditStore implements RouteAuditStore {
             return Mono.error(new IllegalArgumentException("invalid_audit_limit"));
         }
         return redis.opsForList().range(LIST_KEY, 0, limit - 1)
-                .flatMap(json -> Mono.fromCallable(() -> objectMapper.readValue(json, Entry.class))
+                .concatMap(json -> Mono.fromCallable(() -> objectMapper.readValue(json, Entry.class))
                         .onErrorMap(JacksonException.class,
                                 exception -> new IllegalStateException("Could not read route audit event.", exception)))
                 .collectList();
