@@ -31,6 +31,12 @@ public class SecurityConfig {
                         .pathMatchers("/api/console/token").permitAll()
                         .pathMatchers("/api/console/**").hasAuthority("SCOPE_gateway.admin")
                         .pathMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .pathMatchers(
+                                "/actuator/prometheus",
+                                "/actuator/metrics", "/actuator/metrics/**",
+                                "/actuator/gateway", "/actuator/gateway/**")
+                                .hasAuthority("SCOPE_gateway.admin")
+                        .pathMatchers("/actuator/**").denyAll()
                         .pathMatchers("/fallback/**").denyAll()
                         .pathMatchers(HttpMethod.GET, "/api/orders/**").hasAuthority("SCOPE_orders.read")
                         .pathMatchers(HttpMethod.GET, "/api/customers/**").hasAuthority("SCOPE_customers.read")

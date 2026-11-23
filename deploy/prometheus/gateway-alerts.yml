@@ -1,0 +1,46 @@
+groups:
+  - name: enterprise-api-gateway
+    rules:
+      - alert: GatewayProviderFailureRatioHigh
+        expr: |
+          sum(rate(gateway_route_requests_total{outcome="provider"}[5m]))
+          /
+          clamp_min(sum(rate(gateway_route_requests_total[5m])), 1)
+          > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: enterprise-api-gateway
+        annotations:
+          summary: Gateway provider failure ratio is elevated
+          description: More than five percent of observed gateway route requests have failed at the provider side for five minutes.
+
+      - alert: GatewayRoute5xxRateHigh
+        expr: sum(rate(gateway_route_requests_total{status_class="5xx"}[5m])) > 0.5
+        for: 3m
+        labels:
+          severity: critical
+          service: enterprise-api-gateway
+        annotations:
+          summary: Gateway is returning sustained 5xx responses
+          description: The gateway has returned more than 0.5 5xx responses per second over the last five minutes.
+
+      - alert: GatewayRateLimitPressure
+        expr: sum(rate(gateway_route_requests_total{outcome="limited"}[5m])) > 1
+        for: 10m
+        labels:
+          severity: info
+          service: enterprise-api-gateway
+        annotations:
+          summary: Gateway rate limits are being hit continuously
+          description: Clients have been hitting gateway rate limits at more than one request per second for ten minutes; review tenant limits and traffic patterns.
+
+      - alert: GatewayMetricsScrapeUnavailable
+        expr: up{job="enterprise-api-gateway"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: enterprise-api-gateway
+        annotations:
+          summary: Prometheus cannot scrape the gateway
+          description: Check gateway health, private network reachability, token expiry, and the gateway.admin scope.
