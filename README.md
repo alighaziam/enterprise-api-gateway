@@ -121,7 +121,7 @@ The route filters are configured per service. Rate limits are keyed by the authe
 - `GET /actuator/info`
 - `GET /actuator/prometheus`
 
-Health and info are public. Prometheus, metrics, gateway diagnostics and other actuator endpoints require authentication. Restrict actuator exposure to an internal network in production.
+Health and info are public. Prometheus, metrics, and gateway diagnostics require the `gateway.admin` scope; all other actuator endpoints are denied. Restrict actuator exposure to an internal network in production. See [Prometheus metrics and alerting](docs/prometheus-alerting.md) for the scrape identity, alert rules, and validation steps.
 
 ## Example request
 
