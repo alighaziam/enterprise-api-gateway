@@ -100,3 +100,13 @@ This is a consistent engineering assessment baseline, not a claim that a single 
 - Add a controlled deployment/release pipeline and production rollback exercise.
 
 The score meets the 90% engineering target under this weighted rubric. It is not a production certification or a claim that the remaining release gates are complete.
+
+
+## Post-assessment increment — persistent route operator audit
+
+- PR #33 merged as `73504915ca632cfb7482c7d90ba4c5343f60ceb8`.
+- Dynamic route create/update/delete operations now append bounded audit records to Redis (maximum 200 entries).
+- The admin-only `GET /api/console/audit?limit=50` endpoint returns the latest 1–100 events, newest first, with actor subject, action, service ID, outcome, bounded reason code, correlation ID and timestamp.
+- Backend URLs, bearer tokens and raw exception text are excluded. Audit-store failures are logged and do not turn a successful route mutation into a failed operation.
+- Main CI [run 45123162114](https://github.com/alighaziam/enterprise-api-gateway/actions/runs/45123162114) and CodeQL [run 45123162009](https://github.com/alighaziam/enterprise-api-gateway/actions/runs/45123162009) passed on the merged commit.
+- The 90.55% assessment above remains the last full six-dimension scoring pass (commit `6a4b2b42cefca94a147eef5baedaf772b9fdc8da`). PR #33 is recorded as a verified post-assessment increment; no additional percentage is claimed without recalculating every dimension.
