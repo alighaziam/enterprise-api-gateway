@@ -468,9 +468,9 @@ class GatewayScenarioTest {
                     .exchange()
                     .expectStatus().isOk()
                     .expectBody(String.class)
-                    .value(body -> assertThat(body).contains("\\"serviceId\\":\\"billing\\"")
-                            .contains("\\"action\\":\\"DELETE\\"")
-                            .contains("\\"actor\\":\\"gateway-operator\\""));
+                    .value(body -> assertThat(body).contains("\"serviceId\":\"billing\"")
+                            .contains("\"action\":\"DELETE\"")
+                            .contains("\"actor\":\"gateway-operator\""));
             client.get().uri("/api/billing/77")
                     .header(HttpHeaders.AUTHORIZATION, bearer(readToken("billing-gone")))
                     .exchange()
