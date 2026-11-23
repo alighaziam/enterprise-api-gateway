@@ -64,3 +64,39 @@ This is a consistent engineering assessment baseline, not a claim that a single 
 - Previously merged security/TLS work is already present; old branches that are behind main are not to be replayed.
 - No progress percentage is changed. Production certificate/secret-manager configuration, Redis HA, measured load/soak tests, alerting/operational telemetry, and policy tuning remain release gates.
 - The latest recorded Hourly PR Guardian run [44701527011](https://github.com/alighaziam/enterprise-api-gateway/actions/runs/44701527011) failed before the workflow's explicit GH_REPO fix because gh had no local Git repository context. The current workflow file uses --repo; a post-fix scheduled run has not yet been observed, so this automation is not marked fully verified.
+
+
+## Evidence-based reassessment — 23 November 2026
+
+- Assessed default-branch commit: `6a4b2b42cefca94a147eef5baedaf772b9fdc8da`.
+- Overall weighted score: **90.55%**, using the same six dimensions and weights as the baseline.
+
+| Dimension | Weight | Score | Weighted contribution |
+|---|---:|---:|---:|
+| Product capabilities | 40% | 90% | 36.00 |
+| Tests and code quality | 20% | 94% | 18.80 |
+| CI/CD and build | 15% | 100% | 15.00 |
+| Security | 10% | 90% | 9.00 |
+| Documentation | 5% | 95% | 4.75 |
+| Deployment / production readiness | 10% | 70% | 7.00 |
+| **Total** | **100%** | — | **90.55%** |
+
+### Evidence supporting the reassessment
+
+- Product capabilities: WSO2 JWT validation, issuer/expiry/audience checks, per-route OAuth scopes, Redis-backed rate limits, circuit breakers, bounded timeouts, correlation IDs, operator-managed dynamic routes persisted in Redis and restored at startup, route management console, optional direct HTTPS/mTLS, and bounded-cardinality route outcome metrics are implemented.
+- Tests and code quality: automated coverage exercises token expiry/issuer/audience/scope failures, read/write authorization, dynamic route create/update/delete and startup restoration, Redis rate limiting, route governance, host allowlisting, traversal/encoded-separator rejection, actuator authorization, and end-to-end routing against WireMock-style backends. Load/soak and penetration tests remain outstanding.
+- CI/CD and build: main CI [run 45122303056](https://github.com/alighaziam/enterprise-api-gateway/actions/runs/45122303056) passed Maven verification, Prometheus config/rule validation, Compose validation, Docker image build, and the live gateway/security/backend smoke test. CodeQL [run 45122303063](https://github.com/alighaziam/enterprise-api-gateway/actions/runs/45122303063) passed.
+- Security: WSO2 JWT signature/issuer/expiry/audience validation, per-route scope enforcement, exact backend-host allowlisting, rejection of private/unapproved route targets, recursive rejection of encoded dot-segments/separators/backslashes, and admin-only Prometheus/metrics/Gateway diagnostics are implemented. TLS/mTLS is configurable. Independent security review, live secret-manager integration, and production egress controls remain open.
+- Documentation: WSO2 setup, architecture, operations runbook, direct TLS deployment, authenticated Prometheus scrape, alert thresholds, and local validation instructions are documented.
+- Deployment / production readiness: the gateway runs as a non-root container, has a Docker Compose stack with Redis and backend fixtures, supports optional TLS/mTLS, and includes authenticated Prometheus scrape/alert rules. No production deployment, Redis HA, measured capacity/SLO validation, or disaster-recovery exercise has been verified.
+
+### Remaining release gates — not counted as complete
+
+- Validate against a live WSO2 IS 7.3 deployment and production certificate chain.
+- Integrate a production secret manager and rotate gateway, Redis, and Prometheus credentials.
+- Deploy Redis with authentication, TLS, HA, persistence, and tested failover.
+- Enforce independent network egress controls against private, link-local, and cloud metadata destinations.
+- Run load/soak, failure-mode, certificate-rotation, backup/restore, and penetration tests.
+- Add a controlled deployment/release pipeline and production rollback exercise.
+
+The score meets the 90% engineering target under this weighted rubric. It is not a production certification or a claim that the remaining release gates are complete.
