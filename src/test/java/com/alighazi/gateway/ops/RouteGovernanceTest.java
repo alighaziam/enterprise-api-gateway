@@ -176,4 +176,19 @@ class RouteGovernanceTest {
                 .isInstanceOf(IllegalArgumentException.class).hasMessage("invalid_backend");
     }
 
+    @Test
+    void rejectsNestedEncodedSeparatorsAndSingleBackslashesInBackendPaths() {
+        RouteGovernance governance = governance();
+
+        assertThatThrownBy(() -> governance.create(
+                "billing", "http://orders-service:8081/api/%5cadmin", "billing.read", 5, 8, true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("invalid_backend");
+        assertThatThrownBy(() -> governance.create(
+                "billing", "http://orders-service:8081/api/%255cadmin", "billing.read", 5, 8, true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("invalid_backend");
+        assertThatThrownBy(() -> governance.create(
+                "billing", "http://orders-service:8081/api/%252e%252e/admin", "billing.read", 5, 8, true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("invalid_backend");
+    }
+
 }
