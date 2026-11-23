@@ -8,6 +8,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.alighazi.gateway.ops.RouteAuditService;
+import com.alighazi.gateway.ops.RouteAuditStore;
 import com.alighazi.gateway.web.ConsoleStatusService.ConsoleSnapshot;
 import com.alighazi.gateway.web.ConsoleStatusService.RouteInfo;
 import com.alighazi.gateway.web.ConsoleStatusService.ServiceProbe;
@@ -31,7 +33,7 @@ class ConsoleControllerTest {
                 List.of(),
                 List.of())));
 
-        WebTestClient.bindToController(new ConsoleController(service, mock(com.alighazi.gateway.ops.RouteCatalog.class)))
+        WebTestClient.bindToController(new ConsoleController(service, mock(com.alighazi.gateway.ops.RouteCatalog.class), mock(RouteAuditService.class)))
                 .build()
                 .get()
                 .uri("/api/console/status")
@@ -57,4 +59,45 @@ class ConsoleControllerTest {
         org.assertj.core.api.Assertions.assertThat(ConsoleStatusService.describe(new IllegalStateException("  ")))
                 .isEqualTo("بدون پاسخ");
     }
+    @Test
+    void exposesRecentOperatorRouteAudit() {
+        RouteAuditService audit = mock(RouteAuditService.class);
+        when(audit.latest(10)).thenReturn(Mono.just(List.of(new RouteAuditStore.Entry(
+                "audit-1", "gateway-operator", "CREATE", "billing", "SUCCEEDED", "",
+                "request-123", "2026-11-23T06:00:00Z"))));
+
+        WebTestClient.bindToController(new ConsoleController(
+                        mock(ConsoleStatusService.class),
+                        mock(com.alighazi.gateway.ops.RouteCatalog.class),
+                        audit))
+                .build()
+                .get()
+                .uri("/api/console/audit?limit=10")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$[0].actor").isEqualTo("gateway-operator")
+                .jsonPath("$[0].action").isEqualTo("CREATE")
+                .jsonPath("$[0].serviceId").isEqualTo("billing")
+                .jsonPath("$[0].correlationId").isEqualTo("request-123");
+    }
+
+    @Test
+    void rejectsOutOfRangeAuditLimit() {
+        RouteAuditService audit = mock(RouteAuditService.class);
+        when(audit.latest(101)).thenReturn(Mono.error(new IllegalArgumentException("invalid_audit_limit")));
+
+        WebTestClient.bindToController(new ConsoleController(
+                        mock(ConsoleStatusService.class),
+                        mock(com.alighazi.gateway.ops.RouteCatalog.class),
+                        audit))
+                .build()
+                .get()
+                .uri("/api/console/audit?limit=101")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("invalid_audit_limit");
+    }
+
 }
