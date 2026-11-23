@@ -22,7 +22,7 @@ class RouteAuditServiceTest {
         when(store.append(any())).thenReturn(Mono.empty());
         RouteAuditService service = new RouteAuditService(store);
 
-        StepVerifier.create(service.record("operator\\n-1", "create", "billing",
+        StepVerifier.create(service.record("operator\n-1", "create", "billing",
                         "succeeded", "backend_host_not_allowed", "request-123"))
                 .verifyComplete();
 
