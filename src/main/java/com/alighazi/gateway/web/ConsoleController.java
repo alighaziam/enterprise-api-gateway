@@ -48,8 +48,11 @@ public class ConsoleController {
     }
 
     @GetMapping("/api/console/audit")
-    public Mono<List<RouteAuditStore.Entry>> audit(@RequestParam(defaultValue = "50") Integer limit) {
-        return audit.latest(limit);
+    public Mono<ResponseEntity<Object>> audit(@RequestParam(defaultValue = "50") Integer limit) {
+        return audit.latest(limit)
+                .map(entries -> ResponseEntity.ok().body((Object) entries))
+                .onErrorResume(IllegalArgumentException.class, error ->
+                        Mono.just(ResponseEntity.badRequest().body(Map.of("error", error.getMessage()))));
     }
 
     @PostMapping("/api/console/routes")
