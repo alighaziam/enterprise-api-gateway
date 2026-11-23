@@ -426,11 +426,37 @@ public class RouteGovernance {
     }
 
     private static boolean hasUnsafeBackendPath(String rawPath) {
-        if (rawPath == null || rawPath.isBlank()) return false;
+        if (rawPath == null || rawPath.isBlank()) {
+            return false;
+        }
         for (String segment : rawPath.split("/", -1)) {
-            String decoded = java.net.URLDecoder.decode(segment, java.nio.charset.StandardCharsets.UTF_8);
-            if (decoded.equals(".") || decoded.equals("..") || decoded.contains("/") || decoded.contains("\\\\")) {
-                return true;
+            String decoded = segment;
+            // Decode repeatedly because an upstream proxy/backend may decode more
+            // than once. A single decode misses values such as %252e%252e and
+            // %252f, which become traversal segments/separators on a later hop.
+            for (int pass = 0; pass < 8; pass++) {
+                final String next;
+                try {
+                    // URLDecoder is form-oriented; preserve literal '+' in URI paths.
+                    next = java.net.URLDecoder.decode(
+                            decoded.replace("+", "%2B"),
+                            java.nio.charset.StandardCharsets.UTF_8);
+                } catch (IllegalArgumentException malformedEncoding) {
+                    return true;
+                }
+                if (next.equals(".") || next.equals("..")
+                        || next.indexOf('/') >= 0 || next.indexOf('\\\\') >= 0) {
+                    return true;
+                }
+                if (next.equals(decoded)) {
+                    break;
+                }
+                decoded = next;
+                if (pass == 7) {
+                    // Refuse excessive nested encodings rather than guessing how
+                    // many decode passes a downstream component might apply.
+                    return true;
+                }
             }
         }
         return false;
