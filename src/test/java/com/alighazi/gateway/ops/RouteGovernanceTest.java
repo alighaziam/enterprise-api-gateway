@@ -174,6 +174,18 @@ class RouteGovernanceTest {
         assertThatThrownBy(() -> governance.create(
                 "billing", "http://orders-service:8081/api%2fadmin", "billing.read", 5, 8, true))
                 .isInstanceOf(IllegalArgumentException.class).hasMessage("invalid_backend");
+        assertThatThrownBy(() -> governance.create(
+                "billing", "http://orders-service:8081/api/%5c..%5cadmin", "billing.read", 5, 8, true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("invalid_backend");
+        assertThatThrownBy(() -> governance.create(
+                "billing", "http://orders-service:8081/api/%252e%252e%252fadmin", "billing.read", 5, 8, true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("invalid_backend");
+        assertThatThrownBy(() -> governance.create(
+                "billing", "http://orders-service:8081/api/%25252fadmin", "billing.read", 5, 8, true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("invalid_backend");
+        assertThatThrownBy(() -> governance.create(
+                "billing", "http://orders-service:8081/api/%zz", "billing.read", 5, 8, true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("invalid_backend");
     }
 
 }
