@@ -82,4 +82,22 @@ class ConsoleControllerTest {
                 .jsonPath("$[0].correlationId").isEqualTo("request-123");
     }
 
+    @Test
+    void rejectsOutOfRangeAuditLimit() {
+        RouteAuditService audit = mock(RouteAuditService.class);
+        when(audit.latest(101)).thenReturn(Mono.error(new IllegalArgumentException("invalid_audit_limit")));
+
+        WebTestClient.bindToController(new ConsoleController(
+                        mock(ConsoleStatusService.class),
+                        mock(com.alighazi.gateway.ops.RouteCatalog.class),
+                        audit))
+                .build()
+                .get()
+                .uri("/api/console/audit?limit=101")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("invalid_audit_limit");
+    }
+
 }
