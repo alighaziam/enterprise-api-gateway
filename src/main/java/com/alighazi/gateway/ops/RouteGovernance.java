@@ -426,10 +426,35 @@ public class RouteGovernance {
     }
 
     private static boolean hasUnsafeBackendPath(String rawPath) {
-        if (rawPath == null || rawPath.isBlank()) return false;
+        if (rawPath == null || rawPath.isBlank()) {
+            return false;
+        }
         for (String segment : rawPath.split("/", -1)) {
-            String decoded = java.net.URLDecoder.decode(segment, java.nio.charset.StandardCharsets.UTF_8);
-            if (decoded.equals(".") || decoded.equals("..") || decoded.contains("/") || decoded.contains("\\\\")) {
+            String decoded = segment;
+            for (int depth = 0; depth < 8; depth++) {
+                if (decoded.equals(".") || decoded.equals("..")
+                        || decoded.contains("/") || decoded.contains("\\")) {
+                    return true;
+                }
+                String next;
+                try {
+                    // URLDecoder implements form semantics; preserve literal '+' in URI paths.
+                    next = java.net.URLDecoder.decode(
+                            decoded.replace("+", "%2B"), java.nio.charset.StandardCharsets.UTF_8);
+                } catch (IllegalArgumentException malformedEncoding) {
+                    return true;
+                }
+                if (next.equals(decoded)) {
+                    break;
+                }
+                decoded = next;
+                if (depth == 7) {
+                    // Excessively nested encodings are ambiguous across proxy/backend decoding layers.
+                    return true;
+                }
+            }
+            if (decoded.equals(".") || decoded.equals("..")
+                    || decoded.contains("/") || decoded.contains("\\")) {
                 return true;
             }
         }
