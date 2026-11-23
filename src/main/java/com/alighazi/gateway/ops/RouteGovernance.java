@@ -445,7 +445,7 @@ public class RouteGovernance {
                     return true;
                 }
                 if (next.equals(".") || next.equals("..")
-                        || next.indexOf('/') >= 0 || next.indexOf('\\\\') >= 0) {
+                        || next.indexOf('/') >= 0 || next.indexOf('\\') >= 0) {
                     return true;
                 }
                 if (next.equals(decoded)) {
