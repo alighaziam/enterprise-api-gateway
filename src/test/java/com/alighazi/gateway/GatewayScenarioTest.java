@@ -275,6 +275,24 @@ class GatewayScenarioTest {
                     .exchange()
                     .expectStatus().isForbidden();
         }
+
+        @Test
+        void actuatorMetricsAndDiagnosticsRequireGatewayAdminScope() {
+            client.get().uri("/actuator/prometheus")
+                    .header(HttpHeaders.AUTHORIZATION, bearer(readToken("metrics-reader")))
+                    .exchange()
+                    .expectStatus().isForbidden();
+
+            client.get().uri("/actuator/prometheus")
+                    .header(HttpHeaders.AUTHORIZATION, adminAuthorization())
+                    .exchange()
+                    .expectStatus().isOk();
+
+            client.get().uri("/actuator/gateway/routes")
+                    .header(HttpHeaders.AUTHORIZATION, bearer(readToken("gateway-reader")))
+                    .exchange()
+                    .expectStatus().isForbidden();
+        }
     }
 
     @Nested
